@@ -1,6 +1,10 @@
 package servlet;
 
+import servlet.loopmyrun.LoopFinder;
+import servlet.loopmyrun.Point;
+
 import java.io.IOException;
+import java.io.PrintWriter;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -11,17 +15,38 @@ import javax.servlet.http.HttpServletResponse;
 
 @WebServlet(
         name = "MyServlet", 
-        urlPatterns = {"/hello"}
+        urlPatterns = {"/getLoop"}
     )
 public class HelloServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        ServletOutputStream out = resp.getOutputStream();
-        out.write("hello heroku".getBytes());
+        Point p1 = new Point(42.96273444046179, -85.6396280135749);
+        double userDist = 1600.0;
+        int divider = 3;
+        LoopFinder loopFinder = new LoopFinder(p1,userDist,divider);
+        String jsonObject = loopFinder.findLoops();
+
+        resp.setContentType("application/json");
+        PrintWriter out = resp.getWriter();
+        out.print(jsonObject);
         out.flush();
-        out.close();
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse
+            response) throws ServletException, IOException {
+        Point p1 = new Point(42.96273444046179, -85.6396280135749);
+        double userDist = 1600.0;
+        int divider = 3;
+        LoopFinder loopFinder = new LoopFinder(p1,userDist,divider);
+        String jsonObject = loopFinder.findLoops();
+
+        response.setContentType("application/json");
+        PrintWriter out = response.getWriter();
+        out.print(jsonObject);
+        out.flush();
     }
     
 }
