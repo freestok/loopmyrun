@@ -13,10 +13,7 @@ import org.jgrapht.graph.DefaultWeightedEdge;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class LoopFinder {
     private Point userLoc;
@@ -46,18 +43,23 @@ public class LoopFinder {
         Point eastMost = Util.getEastmost(vertexes);
         Point westMost = Util.getWestmost(vertexes);
 
-        //TODO create routes
+        // create routes
         ArrayList<LineString> northRoutes = createRoute(vertexes, northMost);
         ArrayList<LineString> southRoutes = createRoute(vertexes, southMost);
         ArrayList<LineString> eastRoutes = createRoute(vertexes, eastMost);
         ArrayList<LineString> westRoutes = createRoute(vertexes, westMost);
 
-        //TODO extract contents, convert to JSON
+        // combine routes into one array
         ArrayList<LineString> combinedRoutes = new ArrayList<>();
         combinedRoutes.addAll(northRoutes);
         combinedRoutes.addAll(southRoutes);
         combinedRoutes.addAll(eastRoutes);
         combinedRoutes.addAll(westRoutes);
+
+        // remove duplicate routes
+        Set<LineString> s = new LinkedHashSet<>(combinedRoutes);
+        combinedRoutes.clear();
+        combinedRoutes.addAll(s);
 
         // TODO return something else
         MultiLineString allRoutes = new MultiLineString(combinedRoutes);
@@ -129,6 +131,7 @@ public class LoopFinder {
         int length = vertexes.size();
         long jumpAdd = (long) Math.floor(length/10);
         ArrayList<LineString> finishedCycles = new ArrayList<>();
+        ArrayList<Double> finishedLengths = new ArrayList<>();
 
         ArrayList<Point> routes = new ArrayList<>();
         for (int i = 3; i < 10; i++) { // traverse circle
@@ -194,7 +197,13 @@ public class LoopFinder {
                 double lowerRange = userDist * .75;
                 double upperRange = userDist * 1.25;
                 if (cycleLine.getLength() < upperRange && cycleLine.getLength() > lowerRange) {
+
+                    // check to see if duplicate
+                    if (finishedLengths.contains(cycleLine.getLength())) {
+                        continue;
+                    }
                     finishedCycles.add(cycleLine);
+                    finishedLengths.add(cycleLine.getLength());
                     System.out.println("*****");
                     System.out.println(cycleLine.getLength());
                     System.out.println(cycleLine.printCoords());

@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletResponse;
         name = "MyServlet", 
         urlPatterns = {"/getLoop"}
     )
-public class HelloServlet extends HttpServlet {
+public class LoopServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
