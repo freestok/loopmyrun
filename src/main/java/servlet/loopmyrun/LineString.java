@@ -23,6 +23,7 @@ public class LineString {
         put("footway", 1);
         put("pedestrian", 1);
         put("path", 1);
+        put("unclassified", 1);
     }};
 
     public LineString (ArrayList<Point> linestring){
@@ -38,6 +39,8 @@ public class LineString {
                 String p2 = line.get(i+1).coords();
                 DefaultWeightedEdge edge = g.addEdge(p1, p2);
                 Integer weight = ways.get(tag);
+                System.out.println("Weight");
+                System.out.println(tag);
                 g.setEdgeWeight(edge,weight);
             }
         }

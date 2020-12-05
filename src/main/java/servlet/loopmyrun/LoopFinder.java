@@ -85,6 +85,7 @@ public class LoopFinder {
         JSONObject jsonObj = new JSONObject(json);
         JSONArray elements = jsonObj.getJSONArray("elements");
         elements.forEach(e -> {
+//            System.out.println(e);
             JSONObject element = ((JSONObject) e); // recast object to JSON Object
             JSONObject tags = element.getJSONObject("tags");
             String tag = tags.getString("highway");
@@ -115,6 +116,7 @@ public class LoopFinder {
             LineString line = new LineString(points);
             line.createEdges(graph, tag);
         });
+        System.out.println("Done going through elements");
         this.closestVert = closestVert[0];
         return vertexWithin;
     }
@@ -204,13 +206,14 @@ public class LoopFinder {
                     }
                     finishedCycles.add(cycleLine);
                     finishedLengths.add(cycleLine.getLength());
-                    System.out.println("*****");
-                    System.out.println(cycleLine.getLength());
-                    System.out.println(cycleLine.printCoords());
-                    System.out.println("*****");
+//                    System.out.println("*****");
+//                    System.out.println(cycleLine.getLength());
+//                    System.out.println(cycleLine.printCoords());
+//                    System.out.println("*****");
                 }
             }
         }
+        System.out.println("Loop Finder done");
         return finishedCycles;
     }
 }

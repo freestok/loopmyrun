@@ -12,31 +12,70 @@ mp.addControl(searchControl);
 
 let marker;
 
-// map listeners
+// listeners
 mp.on('mouseover', mouseEnter);
-mp.on('click',mapClick)
+mp.on('click',mapClick);
+mp.on('geosearch/showlocation', (event) => {
+	console.log(event);
+	let latlng = event.marker._latlng;
+	addPoint(latlng);
+	mp.removeLayer(event.marker);
+});
 
-function mapClick(event) {
-	if (marker) return null;
+$('#startOver').click(() => {
+	mp.removeLayer(marker);
+	marker = null;
+});
 
-	let latlng = event.latlng;
-	console.log(latlng);
+$("#loopForm").submit(onSubmit);
+
+function onSubmit(event) {
+	event.preventDefault();
+	let data = {
+		lat: marker._latlng.lat,
+		lng: marker._latlng.lng,
+		distance: $('#userDistance').val(),
+		unit: $('input[name="distanceUnit"]:checked').val()
+	}
+	$.ajax({
+		type: "POST",
+		url: "/getLoop",
+		data: data,
+		success: showRoutes,
+		error: (err) => alert(err)
+	});
+}
+// functions
+
+function showRoutes(data) {
+	L.geoJSON(data).addTo(mp);
+}
+
+function addPoint(latlng) {
+	if (marker) mp.removeLayer(marker);
 	let msg = `(${latlng.lat.toFixed(2)}, ${latlng.lng.toFixed(2)})`
-	marker = L.marker(latlng).addTo(mp);
+	marker = L.marker(latlng, {draggable: true}).addTo(mp);
+	marker.on('dragend', (event) => {
+		let latlng = event.target._latlng;
+		let msg = `(${latlng.lat.toFixed(2)}, ${latlng.lng.toFixed(2)})`
+		$('#userLoc').val(msg);
+	});
 	$('.leaflet-container').css('cursor','');
 	$('#userLoc').val(msg);
+}
+
+function mapClick(event) {
+	if (marker) mp.removeLayer(marker);
+	addPoint(event.latlng);
+
 }
 function mouseEnter(event) {
 	if (marker) {
 		$('.leaflet-container').css('cursor','');
 	} else {
 		$('.leaflet-container').css('cursor','crosshair');
-		// console.log(event);
 	}
 }
 
-$('#startOver').click(() => {
-	mp.removeLayer(marker);
-	marker = null;
-});
+
 
