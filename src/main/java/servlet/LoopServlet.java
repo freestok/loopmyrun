@@ -30,16 +30,26 @@ public class LoopServlet extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
+        System.out.println();
+        System.out.println("-------------------");
+
         double lat = Double.parseDouble(request.getParameter("lat"));
         double lng = Double.parseDouble(request.getParameter("lng"));
-        int dist = Integer.parseInt(request.getParameter("distance"));
-        String unit = request.getParameter("unit");
-
-        double userDist = Util.convertDistance(dist, unit);
+        double userDist = Double.parseDouble(request.getParameter("distance"));
         Point p1 = new Point(lat, lng);
-        int divider = 3;
-        LoopFinder loopFinder = new LoopFinder(p1,userDist,divider);
-        String jsonObject = loopFinder.findLoops();
+
+        String jsonObject = "";
+        LoopFinder loopFinder = new LoopFinder(p1,userDist,3);
+        for (int divider = 4; divider < 8; divider++) {
+            System.out.println("***DIVIDER: "+divider);
+            jsonObject = loopFinder.findLoops();
+            if (jsonObject != null) {
+                break;
+            }
+            else loopFinder.setDivider(divider);
+        }
+
+        if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
 
         response.setContentType("application/json");
         PrintWriter out = response.getWriter();

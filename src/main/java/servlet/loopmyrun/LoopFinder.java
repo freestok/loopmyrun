@@ -20,6 +20,7 @@ public class LoopFinder {
     private double userDist;
     private int divider;
     private Point closestVert;
+    private String json;
     private DefaultUndirectedWeightedGraph<String, DefaultWeightedEdge> graph;
 
 
@@ -27,11 +28,14 @@ public class LoopFinder {
         this.userLoc = userLoc;
         this.userDist = userDist;
         this.divider = divider;
+        this.json = requestOverpass(userDist,userLoc,divider);
+    }
+
+    public void setDivider(int divider) {
+        this.divider = divider;
     }
 
     public String findLoops() {
-        // make request
-        String json = requestOverpass();
 
         // initialize graph
         this.graph = new DefaultUndirectedWeightedGraph<>(DefaultWeightedEdge.class);
@@ -51,22 +55,24 @@ public class LoopFinder {
 
         // combine routes into one array
         ArrayList<LineString> combinedRoutes = new ArrayList<>();
-        combinedRoutes.addAll(northRoutes);
-        combinedRoutes.addAll(southRoutes);
-        combinedRoutes.addAll(eastRoutes);
-        combinedRoutes.addAll(westRoutes);
+        if (northRoutes != null) combinedRoutes.addAll(northRoutes);
+        if (southRoutes != null) combinedRoutes.addAll(southRoutes);
+        if (eastRoutes != null) combinedRoutes.addAll(eastRoutes);
+        if (westRoutes != null) combinedRoutes.addAll(westRoutes);
+
+        if (combinedRoutes.isEmpty()) return null;
 
         // remove duplicate routes
         Set<LineString> s = new LinkedHashSet<>(combinedRoutes);
         combinedRoutes.clear();
         combinedRoutes.addAll(s);
 
-        // TODO return something else
+        // return as GeoJson
         MultiLineString allRoutes = new MultiLineString(combinedRoutes);
         return allRoutes.asGeoJSON();
     }
 
-    private String requestOverpass() {
+    private String requestOverpass(double userDist,Point userLoc,int divider) {
         String query = "[out:json];way[highway][\"highway\"~\"primary|secondary|tertiary|" +
                 "residential|unclassified|primary_link|secondary_link|tertiary_link|service|path\"]" +
                 "(around:"+userDist/(divider-1)+","+userLoc.x()+","+userLoc.y()+");out geom;";
@@ -124,7 +130,6 @@ public class LoopFinder {
     private ArrayList<LineString> createRoute(ArrayList<Point> vertexes, Point originPoint) {
         ClockwiseSort clockwiseSort = new ClockwiseSort(originPoint);
         Collections.sort(vertexes, clockwiseSort);
-        //TODO traverse circle
         ArrayList<LineString> route = traverseCircle(vertexes);
         return route;
     }
@@ -134,17 +139,21 @@ public class LoopFinder {
         long jumpAdd = (long) Math.floor(length/10);
         ArrayList<LineString> finishedCycles = new ArrayList<>();
         ArrayList<Double> finishedLengths = new ArrayList<>();
-
-        ArrayList<Point> routes = new ArrayList<>();
         for (int i = 3; i < 10; i++) { // traverse circle
             long jump = 0;
             ArrayList<Point> route = new ArrayList<>();
 
-            for (int j = 0; j < i; j++) { // points by jump
-                Point nextPoint = vertexes.get((int) jump);
-                route.add(nextPoint);
-                jump += jumpAdd;
+            try {
+                for (int j = 0; j < i; j++) { // points by jump
+                    Point nextPoint = vertexes.get((int) jump);
+                    route.add(nextPoint);
+                    jump += jumpAdd;
+                }
+            } catch(Exception e) {
+                return null;
             }
+
+
             route.add(0,closestVert);
             route.add(route.size(),closestVert);
 
@@ -159,6 +168,7 @@ public class LoopFinder {
                             dijkstraAlg.getPaths(route.get(p).coords());
 
                     GraphPath<String, DefaultWeightedEdge> pth = pthSrc.getPath(route.get(p+1).coords());
+                    if (pth == null) continue;
                     paths.add(pth);
                 }
             }

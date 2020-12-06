@@ -39,12 +39,14 @@ public class LineString {
                 String p2 = line.get(i+1).coords();
                 DefaultWeightedEdge edge = g.addEdge(p1, p2);
                 Integer weight = ways.get(tag);
-                System.out.println("Weight");
-                System.out.println(tag);
-                g.setEdgeWeight(edge,weight);
+                try {
+                    g.setEdgeWeight(edge,weight);
+                }
+                catch(Exception e) {
+                    System.out.println(e);
+                }
             }
         }
-//        return g;
     }
 
     public String getPoint(int i) { return this.linestring.get(i).coords(); }

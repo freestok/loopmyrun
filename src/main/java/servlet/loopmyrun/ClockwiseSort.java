@@ -12,7 +12,9 @@ public class ClockwiseSort implements Comparator<Point> {
     public int compare(Point p1, Point p2) {
         double angle1 = clockwise(p1,this.origin);
         double angle2 = clockwise(p2,this.origin);
-        if (angle1 > angle2) {
+        if (angle1 == angle2) {
+            return 0;
+        } else if (angle1 > angle2) {
             return 1;
         } else {
             return -1;

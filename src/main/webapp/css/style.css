@@ -11,3 +11,8 @@ body, html {
 .btn {
     margin-top: .5em;
 }
+
+#loopResults {
+  display: none;
+  padding-top: 1em;
+}

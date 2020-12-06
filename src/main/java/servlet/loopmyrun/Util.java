@@ -74,14 +74,4 @@ public class Util {
         });
         return maxPoint[0];
     }
-
-    public static double convertDistance(int dist, String unit) {
-        double userDist;
-        if (unit == "mile") {
-            userDist = dist / 0.00062137;
-        } else {
-            userDist = dist * 1000;
-        }
-        return userDist;
-    }
 }
