@@ -2,11 +2,11 @@ package servlet.loopmyrun;
 
 import java.text.DecimalFormat;
 
-public class Point {
+public class LatLng {
     private double x;
     private double y;
     private DecimalFormat df = new DecimalFormat("#.00000");
-    public Point (
+    public LatLng(
             double x,
             double y
     ) {

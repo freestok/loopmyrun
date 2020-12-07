@@ -1,14 +1,13 @@
 package servlet;
 
+import servlet.loopmyrun.LatLng;
 import servlet.loopmyrun.LoopFinder;
-import servlet.loopmyrun.Point;
-import servlet.loopmyrun.Util;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.StringJoiner;
 
 import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -36,18 +35,25 @@ public class LoopServlet extends HttpServlet {
         double lat = Double.parseDouble(request.getParameter("lat"));
         double lng = Double.parseDouble(request.getParameter("lng"));
         double userDist = Double.parseDouble(request.getParameter("distance"));
-        Point p1 = new Point(lat, lng);
+        LatLng p1 = new LatLng(lat, lng);
 
-        String jsonObject = "";
-        LoopFinder loopFinder = new LoopFinder(p1,userDist,3);
-        for (int divider = 4; divider < 8; divider++) {
-            System.out.println("***DIVIDER: "+divider);
-            jsonObject = loopFinder.findLoops();
-            if (jsonObject != null) {
-                break;
-            }
-            else loopFinder.setDivider(divider);
-        }
+
+        LoopFinder loopFinder = new LoopFinder(p1,userDist);
+        String jsonObject = loopFinder.findLoops();
+//        for (int divider = 4; divider < 6; divider++) {
+//            System.out.println("***DIVIDER: "+divider);
+//            String jsonObject = loopFinder.findLoops();
+//            if (jsonObject != null) geoJson.add(jsonObject);
+//            loopFinder.setDivider(divider);
+////            if (jsonObject != null) {
+////                break;
+////            }
+////            else loopFinder.setDivider(divider);
+//        }
+//
+//        String returnString = geoJson.toString();
+//        returnString +="]}";
+//        System.out.println(geoJson);
 
         if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
 

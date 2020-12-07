@@ -1,27 +1,25 @@
 package servlet.loopmyrun;
 
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
 public class MultiLineString {
-    private ArrayList<LineString> multilinestring;
+    private ArrayList<Line> multilinestring;
 
-    public MultiLineString(ArrayList<LineString> multilinestring) {
+    public MultiLineString(ArrayList<Line> multilinestring) {
         this.multilinestring = multilinestring;
     }
 
     public String asGeoJSON() {
 //        String geoJson;
-        StringJoiner geoJson = new StringJoiner(" ");
+        StringJoiner geoJson = new StringJoiner("");
         geoJson.add("{\"type\": \"FeatureCollection\",");
         geoJson.add("\"features\": [");
 
-        for (LineString line: multilinestring) {
+        for (Line line: multilinestring) {
             String feature;
-            feature = "{\"type\": \"Feature\", \"properties\": { \"ln\":"+ line.getLength()+" }, ";
-            feature += "\"geometry\": {\"type\": \"LineString\", \"coordinates\": " + line.printCoords() + "} },";
+            feature = "{\"type\":\"Feature\",\"properties\":{\"ln\":"+ line.getLength()+"},";
+            feature += "\"geometry\":{\"type\":\"LineString\",\"coordinates\":" + line.printCoords() + "}},";
             geoJson.add(feature);
         }
         String returnString =geoJson.toString();

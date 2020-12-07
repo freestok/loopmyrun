@@ -1,6 +1,39 @@
 // add map components
 // const mp = L.map('map').setView([15.9451, 15.468], 2);
-const mp = L.map('map').setView([42.962, -85.639],18);
+const mp = L.map('map', {
+	// don't add the zoom control
+	zoomControl: false,
+	// disable drag and zoom handlers
+	dragging: false,
+	touchZoom: false,
+	doubleClickZoom: false,
+	scrollWheelZoom: false,
+	boxZoom: false,
+	keyboard: false,
+	tap: false
+}).setView([42.962, -85.639],18);
+
+var popup = L.popup({
+	closeButton: true,
+	autoClose: true
+  })
+  .setLatLng(mp.getBounds().getCenter())
+  .setContent('<p>Welcome!</p>')
+  .openOn(mp);
+  
+  mp.once('popupclose', function(e){
+	// add the zoom control
+	L.control.zoom().addTo(mp);
+	// enable drag and zoom handlers
+	mp.dragging.enable();
+	mp.touchZoom.enable();
+	mp.doubleClickZoom.enable();
+	mp.scrollWheelZoom.enable();
+	mp.boxZoom.enable();
+	mp.keyboard.enable();
+	if (mp.tap) mp.tap.enable();
+  });
+
 const provider = new GeoSearch.EsriProvider();
 const searchControl = new GeoSearch.GeoSearchControl({
   provider: provider,
@@ -12,6 +45,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map
 mp.addControl(searchControl);
 
 let marker;
+let routesList = {};
 
 // listeners
 mp.on('mouseover', mouseEnter);
@@ -46,8 +80,11 @@ $('#resultsTab').click(() => {
 
 function onSubmit(event) {
 	event.preventDefault();
+	mp.eachLayer((layer) => {
+		if (!layer.options.attribution) mp.removeLayer(layer);
+	}); 
 	$("#loopResults").empty();
-	let dist = convertDist($('#userDistance').val());
+	let dist = convertDist();
 	console.log(dist);
 	let data = {
 		lat: marker._latlng.lat,
@@ -59,11 +96,12 @@ function onSubmit(event) {
 		url: "/getLoop",
 		data: data,
 		success: showRoutes,
-		error: (err) => alert("Oops, an unknown error occurred. I'm just as confused as you are.",err)
+		error: (err) => alert("Oops, an unknown error occurred. Try adjusting your point slightly.",err)
 	});
 }
 
-function convertDist(dist) {
+function convertDist() {
+	let dist = $('#userDistance').val()
 	let unit = $('input[name="distanceUnit"]:checked').val();
 	if (unit == 'mile') return dist * 1609.344;
 	else if (unit == 'km') return dist * 1000;
@@ -82,25 +120,42 @@ function metersToUnit(f) {
 		return [lineDistance, `${rounded} km.`];
 	} 
 }
+
+function closestFeatures(features) {
+	let d = Number($('#userDistance').val())
+	closest = [];
+	for (let feature of features) {
+		// let line = turf.cleanCoords(feature);
+		// let line = feature;
+		// let poly = turf.lineToPolygon(feature);
+		// let unkink = turf.kinks(poly);
+		// console.log('unkink:',unkink);
+		// console.log('unkink',unkink);
+		// let line = turf.polygonToLine(unkink);
+		// console.log('FEATURE:', feature);
+		feature.dist = metersToUnit(feature)[0];
+		closest.push(line);
+	}
+	return features.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
+}
 function showRoutes(data) {
-	mp.removeLayer(marker);
-	marker = null;
+	// remove marker
+	// mp.removeLayer(marker);
+	// marker = null;
+
+	// if no routes found
 	if (data.message == 'no loops') {
 		alert("I couldn't find any loops for this area!")
 		return null;
 	}
-	console.log('data',data);
-	let goalLength = convertDist($('#userDistance').val());
+	
 	let features = data.features;
-	features.sort((a, b) => {
-		return Math.abs(goalLength-a.properties.ln) - Math.abs(goalLength-b.properties.ln);
-	});
+	features = closestFeatures(features);
 
 	// check for duplicates
 	let geometries = [];
 	let forAdd = [];
-
-	for (feature of features) {
+	for (let feature of features) {
 		if (geometries.includes(feature.properties.ln)) continue;
 		else forAdd.push(feature);
 		geometries.push(feature.properties.ln);
@@ -110,7 +165,6 @@ function showRoutes(data) {
 	
 	for (let i=0; i < forAdd.length; i++) {
 		let add = forAdd[i]
-		console.log('feature',add);
 		let convertedLength = metersToUnit(add);
 		let dist=Math.floor(convertedLength[0]);
 		let title = `Route #${i+1}`;
@@ -123,7 +177,7 @@ function showRoutes(data) {
 			buttonColor = 'btn-primary';
 		}
 		let msg = `
-		<div class="${cardClass}" style="width: 12rem;">
+		<div class="${cardClass}" style="width: 100%;" onclick="displayRoute()">
 			<div class="card-body">
 				<h5 class="card-title">${title}</h5>
 				<h6 class="card-subtitle mb-3">${convertedLength[1]}</h6>
@@ -135,50 +189,42 @@ function showRoutes(data) {
 
 		console.log('RESULT');
 		console.log('dist',dist);
+
+		if (i == 0) displayRoute(add,dist);
 		
-		for(let step=1;step<dist+1;step++){
-			console.log('STEP');
-			let res = turf.along(add, step,{units:'miles'});
-			let coords = res.geometry.coordinates;
-			var numberIcon = L.icon({
-				iconUrl: `assets/${step}.png`,
-				iconSize: [25, 25], 
-			});
-			L.marker([coords[1], coords[0]], {icon: numberIcon}).addTo(mp);
 
-			console.log(res);
-			// L.geoJson(res, {
-			// 	pointToLayer: function(feature, latlng) {
-			// 	  console.log(latlng, feature);
-			// 	  return L.marker(latlng, {
-			// 		icon: smallIcon
-			// 	  });
-			// 	},
-			// 	onEachFeature: onEachFeature
-			//   }).addTo(mp);
-			// result.features.push();
-		}
-		L.geoJson(add).addTo(mp);
-		console.log('addRESULT');
 	}
-
-	// add lines and distances along line
-	// let jsonLine = forAdd[0];
-	// jsonLine = L.geoJson(jsonLine);
-	// let length = turf.lineDistance(jsonLine, 'miles');
-	
-
-
-	// let routes = L.geoJSON(data);
-	// console.log(routes);
 	$('#resultsTab').removeClass('disabled');
 	$('#resultsTab').addClass('active');
 	$('#formTab').removeClass('active');
 	$('#loopForm').hide();
 	$('#loopResults').show();
-	// routes.addTo(mp);
 }
 
+function displayRoute(add,dist) {
+	for(let step=1;step<dist+1;step++){
+		if (step == 1) {
+			let c = add.geometry.coordinates[0];
+			console.log('***c',c);
+			let startIcon = L.icon({
+				iconUrl: `assets/start.png`,
+				iconSize: [25, 25], 
+			});
+			L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
+		}
+		console.log('STEP');
+		let res = turf.along(add, step,{units:'miles'});
+		let coords = res.geometry.coordinates;
+		let numberIcon = L.icon({
+			iconUrl: `assets/${step}.png`,
+			iconSize: [25, 25], 
+		});
+		L.marker([coords[1], coords[0]], {icon: numberIcon}).addTo(mp);
+
+		console.log(res);
+	}
+	L.geoJson(add).addTo(mp);
+}
 function addPoint(latlng) {
 	if (marker) mp.removeLayer(marker);
 	let msg = `(${latlng.lat.toFixed(3)}, ${latlng.lng.toFixed(3)})`

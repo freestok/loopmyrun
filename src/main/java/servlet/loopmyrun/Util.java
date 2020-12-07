@@ -1,8 +1,31 @@
 package servlet.loopmyrun;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.gavaghan.geodesy.*;
+
+
 
 public class Util {
+    final public static GeodeticCalculator geoCalc = new GeodeticCalculator();
+    final public static Ellipsoid reference = Ellipsoid.WGS84;
+    final public static Map<String, Integer> ways = new HashMap<String, Integer>() {{
+        put("primary", 6);
+        put("primary_link", 5);
+        put("secondary", 4);
+        put("secondary_link", 4);
+        put("tertiary", 3);
+        put("tertiary_link", 3);
+        put("residential", 2);
+        put("service", 2);
+        put("pedestrian", 1);
+        put("footway", 1);
+        put("pedestrian", 1);
+        put("path", 1);
+        put("unclassified", 1);
+    }};
 
     public static double haversine(
             double lat1,
@@ -27,9 +50,9 @@ public class Util {
         return meters;
     }
 
-    public static Point getNorthmost(ArrayList<Point> points) {
+    public static LatLng getNorthmost(ArrayList<LatLng> points) {
         double[] max = {-90};
-        Point[] maxPoint = {new Point(0,0)};
+        LatLng[] maxPoint = {new LatLng(0,0)};
         points.forEach(e -> {
             if (e.y() < max[0]) {
                 max[0] = e.x();
@@ -39,9 +62,9 @@ public class Util {
         return maxPoint[0];
     }
 
-    public static Point getSouthmost(ArrayList<Point> points) {
+    public static LatLng getSouthmost(ArrayList<LatLng> points) {
         double[] max = {90};
-        Point[] maxPoint = {new Point(0,0)};
+        LatLng[] maxPoint = {new LatLng(0,0)};
         points.forEach(e -> {
             if (e.y() < max[0]) {
                 max[0] = e.x();
@@ -51,9 +74,9 @@ public class Util {
         return maxPoint[0];
     }
 
-    public static Point getEastmost(ArrayList<Point> points) {
+    public static LatLng getEastmost(ArrayList<LatLng> points) {
         double[] max = {-180};
-        Point[] maxPoint = {new Point(0,0)};
+        LatLng[] maxPoint = {new LatLng(0,0)};
         points.forEach(e -> {
             if (e.y() > max[0]) {
                 max[0] = e.x();
@@ -63,9 +86,9 @@ public class Util {
         return maxPoint[0];
     }
 
-    public static Point getWestmost(ArrayList<Point> points) {
+    public static LatLng getWestmost(ArrayList<LatLng> points) {
         double[] max = {180};
-        Point[] maxPoint = {new Point(0,0)};
+        LatLng[] maxPoint = {new LatLng(0,0)};
         points.forEach(e -> {
             if (e.y() < max[0]) {
                 max[0] = e.x();

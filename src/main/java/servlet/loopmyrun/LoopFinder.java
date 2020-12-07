@@ -16,45 +16,63 @@ import org.json.JSONObject;
 import java.util.*;
 
 public class LoopFinder {
-    private Point userLoc;
+    private LatLng userLoc;
     private double userDist;
     private int divider;
-    private Point closestVert;
+    private LatLng closestVert;
     private String json;
     private DefaultUndirectedWeightedGraph<String, DefaultWeightedEdge> graph;
 
 
-    public LoopFinder(Point userLoc, double userDist, int divider) {
+    public LoopFinder(LatLng userLoc, double userDist) {
         this.userLoc = userLoc;
         this.userDist = userDist;
         this.divider = divider;
-        this.json = requestOverpass(userDist,userLoc,divider);
+        this.json = requestOverpass(userDist,userLoc);
     }
 
-    public void setDivider(int divider) {
+    private void setDivider(int divider) {
         this.divider = divider;
     }
 
     public String findLoops() {
+        ArrayList<Line> masterRoutes = new ArrayList<>();
+        for (int divider = 3; divider < 7; divider++) {
+            ArrayList<Line> loops = getLoops(divider);
+            if (loops != null) masterRoutes.addAll(loops);
+
+            if (userDist >= 10) break; // don't do this multiple times if large distance
+        }
+
+        if (masterRoutes == null) return null;
+
+        // return as GeoJson
+        MultiLineString allRoutes = new MultiLineString(masterRoutes);
+        return allRoutes.asGeoJSON();
+    }
+
+    private ArrayList<Line> getLoops(int divider) {
+        setDivider(divider);
+        System.out.println("DIVIDER: " + divider);
 
         // initialize graph
         this.graph = new DefaultUndirectedWeightedGraph<>(DefaultWeightedEdge.class);
 
         // parse JSON
-        ArrayList<Point> vertexes = processJSON(json);
-        Point northMost = Util.getNorthmost(vertexes);
-        Point southMost = Util.getSouthmost(vertexes);
-        Point eastMost = Util.getEastmost(vertexes);
-        Point westMost = Util.getWestmost(vertexes);
+        ArrayList<LatLng> vertexes = processJSON(json);
+        LatLng northMost = Util.getNorthmost(vertexes);
+        LatLng southMost = Util.getSouthmost(vertexes);
+        LatLng eastMost = Util.getEastmost(vertexes);
+        LatLng westMost = Util.getWestmost(vertexes);
 
         // create routes
-        ArrayList<LineString> northRoutes = createRoute(vertexes, northMost);
-        ArrayList<LineString> southRoutes = createRoute(vertexes, southMost);
-        ArrayList<LineString> eastRoutes = createRoute(vertexes, eastMost);
-        ArrayList<LineString> westRoutes = createRoute(vertexes, westMost);
+        ArrayList<Line> northRoutes = createRoute(vertexes, northMost);
+        ArrayList<Line> southRoutes = createRoute(vertexes, southMost);
+        ArrayList<Line> eastRoutes = createRoute(vertexes, eastMost);
+        ArrayList<Line> westRoutes = createRoute(vertexes, westMost);
 
         // combine routes into one array
-        ArrayList<LineString> combinedRoutes = new ArrayList<>();
+        ArrayList<Line> combinedRoutes = new ArrayList<>();
         if (northRoutes != null) combinedRoutes.addAll(northRoutes);
         if (southRoutes != null) combinedRoutes.addAll(southRoutes);
         if (eastRoutes != null) combinedRoutes.addAll(eastRoutes);
@@ -63,19 +81,16 @@ public class LoopFinder {
         if (combinedRoutes.isEmpty()) return null;
 
         // remove duplicate routes
-        Set<LineString> s = new LinkedHashSet<>(combinedRoutes);
+        Set<Line> s = new LinkedHashSet<>(combinedRoutes);
         combinedRoutes.clear();
         combinedRoutes.addAll(s);
-
-        // return as GeoJson
-        MultiLineString allRoutes = new MultiLineString(combinedRoutes);
-        return allRoutes.asGeoJSON();
+        return combinedRoutes;
     }
 
-    private String requestOverpass(double userDist,Point userLoc,int divider) {
+    private String requestOverpass(double userDist, LatLng userLoc) {
         String query = "[out:json];way[highway][\"highway\"~\"primary|secondary|tertiary|" +
                 "residential|unclassified|primary_link|secondary_link|tertiary_link|service|path\"]" +
-                "(around:"+userDist/(divider-1)+","+userLoc.x()+","+userLoc.y()+");out geom;";
+                "(around:"+userDist/2+","+userLoc.x()+","+userLoc.y()+");out geom;";
         HttpRequest response = HttpRequest
                 .post("http://overpass-api.de/api/interpreter")
                 .send("data="+query);
@@ -83,9 +98,9 @@ public class LoopFinder {
         return json;
     }
 
-    private ArrayList<Point> processJSON(String json) {
-        ArrayList<Point> vertexWithin = new ArrayList<>();
-        Point[] closestVert = {new Point(0,0)};
+    private ArrayList<LatLng> processJSON(String json) {
+        ArrayList<LatLng> vertexWithin = new ArrayList<>();
+        LatLng[] closestVert = {new LatLng(0,0)};
         double[] closestDist = {1e7};
 
         JSONObject jsonObj = new JSONObject(json);
@@ -96,12 +111,12 @@ public class LoopFinder {
             JSONObject tags = element.getJSONObject("tags");
             String tag = tags.getString("highway");
             JSONArray geom = element.getJSONArray("geometry");
-            ArrayList<Point> points = new ArrayList<Point>();
+            ArrayList<LatLng> points = new ArrayList<LatLng>();
             geom.forEach(g -> {
                 JSONObject xy = ((JSONObject) g);
                 double lon = xy.getDouble("lon");
                 double lat = xy.getDouble("lat");
-                Point p = new Point(lat, lon);
+                LatLng p = new LatLng(lat, lon);
                 points.add(p);
                 graph.addVertex(p.coords());
                 double dist = Util.haversine(userLoc.x(), userLoc.y(), lat, lon);
@@ -119,7 +134,7 @@ public class LoopFinder {
                     vertexWithin.add(p);
                 }
             });
-            LineString line = new LineString(points);
+            Line line = new Line(points);
             line.createEdges(graph, tag);
         });
         System.out.println("Done going through elements");
@@ -127,25 +142,25 @@ public class LoopFinder {
         return vertexWithin;
     }
 
-    private ArrayList<LineString> createRoute(ArrayList<Point> vertexes, Point originPoint) {
+    private ArrayList<Line> createRoute(ArrayList<LatLng> vertexes, LatLng originPoint) {
         ClockwiseSort clockwiseSort = new ClockwiseSort(originPoint);
         Collections.sort(vertexes, clockwiseSort);
-        ArrayList<LineString> route = traverseCircle(vertexes);
+        ArrayList<Line> route = traverseCircle(vertexes);
         return route;
     }
 
-    private ArrayList<LineString> traverseCircle(ArrayList<Point> vertexes) {
+    private ArrayList<Line> traverseCircle(ArrayList<LatLng> vertexes) {
         int length = vertexes.size();
         long jumpAdd = (long) Math.floor(length/10);
-        ArrayList<LineString> finishedCycles = new ArrayList<>();
+        ArrayList<Line> finishedCycles = new ArrayList<>();
         ArrayList<Double> finishedLengths = new ArrayList<>();
         for (int i = 3; i < 10; i++) { // traverse circle
             long jump = 0;
-            ArrayList<Point> route = new ArrayList<>();
+            ArrayList<LatLng> route = new ArrayList<>();
 
             try {
                 for (int j = 0; j < i; j++) { // points by jump
-                    Point nextPoint = vertexes.get((int) jump);
+                    LatLng nextPoint = vertexes.get((int) jump);
                     route.add(nextPoint);
                     jump += jumpAdd;
                 }
@@ -193,7 +208,7 @@ public class LoopFinder {
 
             for (List<DefaultEdge> subL: cycles) {
                 // deconstruct cycle and recast to a linestring
-                ArrayList<Point> cyclePoints = new ArrayList<>();
+                ArrayList<LatLng> cyclePoints = new ArrayList<>();
                 for (DefaultEdge subEdge: subL) {
                     String[] src = subGraph.getEdgeSource(subEdge).split(",");
                     String[] end = subGraph.getEdgeTarget(subEdge).split(",");
@@ -202,25 +217,25 @@ public class LoopFinder {
                     double srcY = Double.parseDouble(src[1]);
                     double endX = Double.parseDouble(end[0]);
                     double endY = Double.parseDouble(end[1]);
-                    cyclePoints.add(new Point(srcY, srcX));
-                    cyclePoints.add(new Point(endY, endX));
+                    cyclePoints.add(new LatLng(srcY, srcX));
+                    cyclePoints.add(new LatLng(endY, endX));
                 }
-                LineString cycleLine = new LineString(cyclePoints);
-                double lowerRange = userDist * .75;
-                double upperRange = userDist * 1.25;
-                if (cycleLine.getLength() < upperRange && cycleLine.getLength() > lowerRange) {
-
-                    // check to see if duplicate
-                    if (finishedLengths.contains(cycleLine.getLength())) {
-                        continue;
-                    }
-                    finishedCycles.add(cycleLine);
-                    finishedLengths.add(cycleLine.getLength());
-//                    System.out.println("*****");
+                Line cycleLine = new Line(cyclePoints);
+//                double lowerRange = userDist * .75;
+//                double upperRange = userDist * 1.25;
+                finishedCycles.add(cycleLine);
+//                if (cycleLine.getLength() < upperRange && cycleLine.getLength() > lowerRange) {
+//
+//                    // check to see if duplicate
+//                    if (finishedLengths.contains(cycleLine.getLength())) {
+//                        continue;
+//                    }
+//                    finishedCycles.add(cycleLine);
+//                    System.out.println("*****************");
 //                    System.out.println(cycleLine.getLength());
 //                    System.out.println(cycleLine.printCoords());
-//                    System.out.println("*****");
-                }
+//                    finishedLengths.add(cycleLine.getLength());
+//                }
             }
         }
         System.out.println("Loop Finder done");
