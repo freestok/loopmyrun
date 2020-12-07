@@ -134,7 +134,7 @@ function closestFeatures(features) {
 		// let line = turf.polygonToLine(unkink);
 		// console.log('FEATURE:', feature);
 		feature.dist = metersToUnit(feature)[0];
-		closest.push(line);
+		// closest.push(line);
 	}
 	return features.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
 }
