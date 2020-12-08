@@ -40,20 +40,6 @@ public class LoopServlet extends HttpServlet {
 
         LoopFinder loopFinder = new LoopFinder(p1,userDist);
         String jsonObject = loopFinder.findLoops();
-//        for (int divider = 4; divider < 6; divider++) {
-//            System.out.println("***DIVIDER: "+divider);
-//            String jsonObject = loopFinder.findLoops();
-//            if (jsonObject != null) geoJson.add(jsonObject);
-//            loopFinder.setDivider(divider);
-////            if (jsonObject != null) {
-////                break;
-////            }
-////            else loopFinder.setDivider(divider);
-//        }
-//
-//        String returnString = geoJson.toString();
-//        returnString +="]}";
-//        System.out.println(geoJson);
 
         if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
 

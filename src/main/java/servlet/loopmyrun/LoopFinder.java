@@ -41,7 +41,9 @@ public class LoopFinder {
             ArrayList<Line> loops = getLoops(divider);
             if (loops != null) masterRoutes.addAll(loops);
 
-            if (userDist >= 10) break; // don't do this multiple times if large distance
+            setDivider(divider);
+
+//            if (userDist >= 2) break; // don't do this multiple times if larger than 10 miles
         }
 
         if (masterRoutes == null) return null;
@@ -88,9 +90,15 @@ public class LoopFinder {
     }
 
     private String requestOverpass(double userDist, LatLng userLoc) {
+        int div;
+        if (userDist <= 10000) div = 2;
+        else if (userDist <= 20000) div = 3;
+        else if (userDist <= 30000) div = 4;
+        else if (userDist <= 40000) div = 5;
+        else div = 6;
         String query = "[out:json];way[highway][\"highway\"~\"primary|secondary|tertiary|" +
                 "residential|unclassified|primary_link|secondary_link|tertiary_link|service|path\"]" +
-                "(around:"+userDist/2+","+userLoc.x()+","+userLoc.y()+");out geom;";
+                "(around:"+userDist/div+","+userLoc.x()+","+userLoc.y()+");out geom;";
         HttpRequest response = HttpRequest
                 .post("http://overpass-api.de/api/interpreter")
                 .send("data="+query);

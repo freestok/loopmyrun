@@ -49,7 +49,7 @@
                     </div>
                     <div class="form-group">
                         <label for="userDistance" class="font-weight-bold">Distance</label>
-                        <input type="number" class="form-control" id="userDistance" min="1" max="20" placeholder="Max Dist. of 20 mi." required>
+                        <input type="number" class="form-control" id="userDistance" min="1" placeholder="Max Dist. of 20 mi." required>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="distanceUnit" id="mile" value="mile" required>

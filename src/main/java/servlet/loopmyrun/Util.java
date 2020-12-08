@@ -4,13 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.gavaghan.geodesy.*;
-
 
 
 public class Util {
-    final public static GeodeticCalculator geoCalc = new GeodeticCalculator();
-    final public static Ellipsoid reference = Ellipsoid.WGS84;
     final public static Map<String, Integer> ways = new HashMap<String, Integer>() {{
         put("primary", 6);
         put("primary_link", 5);

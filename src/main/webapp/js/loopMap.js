@@ -44,7 +44,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map
 }).addTo(mp);
 mp.addControl(searchControl);
 
-let marker;
+let marker, pause;
 let routesList = {};
 
 // listeners
@@ -78,11 +78,62 @@ $('#resultsTab').click(() => {
 	$('#formTab').removeClass('active');
 });
 
-function onSubmit(event) {
-	event.preventDefault();
+function activateRoute(uid) {
+	console.log('uid',uid);
+	let route = routesList[uid];
+	removeAll();
+	displayRoute(route[0],route[1]);
+
+	// reset links
+	$('#route1link').html(`<a href="#" onclick="activateRoute('route1');return false;">Route #1</a>`);
+	$('#route2link').html(`<a href="#" onclick="activateRoute('route2');return false;">Route #2</a>`);
+	$('#route3link').html(`<a href="#" onclick="activateRoute('route3');return false;">Route #3</a>`);
+	
+
+	
+	$('.card').attr('class','card bg-light mb-3');
+	$('.route').attr('class','btn btn-primary route');
+
+	let newTitle;
+	switch(uid) {
+		case('route1'): newTitle = 'Route #1';
+		case('route2'): newTitle = 'Route #2';
+		case('route3'): newTitle = 'Route #3';
+	}
+
+	$('#'+uid).attr('class','card text-white bg-info mb-3');
+	$('#'+uid+'link').html(newTitle);
+	$('#'+uid+'btn').attr('class','btn btn-light route');
+}
+
+function removeAll() {
 	mp.eachLayer((layer) => {
 		if (!layer.options.attribution) mp.removeLayer(layer);
 	}); 
+}
+function onSubmit(event) {
+	event.preventDefault();
+	pause = true;
+
+	// check marker
+	if (!marker) {
+		alert('Select a location, please.');
+		return null;
+	}
+
+	// check distance
+	let userDist = $('#userDistance').val()
+	let unit = $('input[name="distanceUnit"]:checked').val();
+	if (unit === 'km' && userDist > 32) {
+		alert('Your distance is too high! Try again.');
+		return null;
+	} else if (unit === 'mile' && userDist > 20) {
+		alert('Your distance is too high! Try again.');
+		return null;
+	}
+	
+	removeAll();
+
 	$("#loopResults").empty();
 	let dist = convertDist();
 	console.log(dist);
@@ -124,7 +175,12 @@ function metersToUnit(f) {
 function closestFeatures(features) {
 	let d = Number($('#userDistance').val())
 	closest = [];
+	let origin = [marker._latlng.lng, marker._latlng.lat];
 	for (let feature of features) {
+		// make sure route isn't too far away
+		let startPoint = feature.geometry.coordinates[0]
+		if (turf.distance(startPoint, origin) > .8) continue;
+
 		// let line = turf.cleanCoords(feature);
 		// let line = feature;
 		// let poly = turf.lineToPolygon(feature);
@@ -134,9 +190,9 @@ function closestFeatures(features) {
 		// let line = turf.polygonToLine(unkink);
 		// console.log('FEATURE:', feature);
 		feature.dist = metersToUnit(feature)[0];
-		// closest.push(line);
+		closest.push(feature);
 	}
-	return features.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
+	return closest.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
 }
 function showRoutes(data) {
 	// remove marker
@@ -149,16 +205,17 @@ function showRoutes(data) {
 		return null;
 	}
 	
-	let features = data.features;
-	features = closestFeatures(features);
+	let dataFeats = data.features;
+	features = closestFeatures(dataFeats);
 
 	// check for duplicates
 	let geometries = [];
 	let forAdd = [];
 	for (let feature of features) {
-		if (geometries.includes(feature.properties.ln)) continue;
+		if (geometries.includes(feature.dist)) continue;
 		else forAdd.push(feature);
-		geometries.push(feature.properties.ln);
+		console.log('ADDING');
+		geometries.push(feature.dist);
 	}
 	forAdd = forAdd.slice(0, 3);
 	console.log('forAdd',forAdd);
@@ -167,21 +224,25 @@ function showRoutes(data) {
 		let add = forAdd[i]
 		let convertedLength = metersToUnit(add);
 		let dist=Math.floor(convertedLength[0]);
-		let title = `Route #${i+1}`;
+		let routeName = `Route #${i+1}`;
+		let cardID = `route${i+1}`;
+		let title;
 		if (i == 0) {
+			title = routeName;
 			cardClass = 'card text-white bg-info mb-3';
 			buttonColor = 'btn-light'
 		}
 		else {
+			title = `<a href="#" onclick="activateRoute('${cardID}');return false;">${routeName}</a>`;
 			cardClass = 'card bg-light mb-3';
 			buttonColor = 'btn-primary';
 		}
 		let msg = `
-		<div class="${cardClass}" style="width: 100%;" onclick="displayRoute()">
+		<div id="${cardID}" class="${cardClass}" style="width: 100%;">
 			<div class="card-body">
-				<h5 class="card-title">${title}</h5>
+				<h5 id="${cardID}link" class="card-title">${title}</h5>
 				<h6 class="card-subtitle mb-3">${convertedLength[1]}</h6>
-				<a href="#" class="btn ${buttonColor}">Save Route</a>
+				<a href="#" id="${cardID}btn" class="btn ${buttonColor} route">Save Route</a>
 			</div>
 		</div>
 		`
@@ -191,29 +252,28 @@ function showRoutes(data) {
 		console.log('dist',dist);
 
 		if (i == 0) displayRoute(add,dist);
-		
-
+		routesList[cardID] = [add, dist];
 	}
 	$('#resultsTab').removeClass('disabled');
 	$('#resultsTab').addClass('active');
 	$('#formTab').removeClass('active');
 	$('#loopForm').hide();
 	$('#loopResults').show();
+	pause = false;
 }
 
 function displayRoute(add,dist) {
+	let unit = $('input[name="distanceUnit"]:checked').val();
+	let c = add.geometry.coordinates[0];
+	console.log('***c',c);
+	let startIcon = L.icon({
+		iconUrl: `assets/start.png`,
+		iconSize: [25, 25], 
+	});
+	L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
 	for(let step=1;step<dist+1;step++){
-		if (step == 1) {
-			let c = add.geometry.coordinates[0];
-			console.log('***c',c);
-			let startIcon = L.icon({
-				iconUrl: `assets/start.png`,
-				iconSize: [25, 25], 
-			});
-			L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
-		}
 		console.log('STEP');
-		let res = turf.along(add, step,{units:'miles'});
+		let res = unit === 'km' ? turf.along(add, step) : turf.along(add, step,{units:'miles'});
 		let coords = res.geometry.coordinates;
 		let numberIcon = L.icon({
 			iconUrl: `assets/${step}.png`,
@@ -242,6 +302,7 @@ function mapClick(event) {
 	// resultsTab
 	let resultsClass = $('#resultsTab').attr("class").split(/\s+/);
 	if (resultsClass.includes('active')) return null;
+	if (pause) return null;
 
 	if (marker) mp.removeLayer(marker);
 	addPoint(event.latlng);
