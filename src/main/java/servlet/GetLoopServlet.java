@@ -86,7 +86,7 @@ public class GetLoopServlet extends HttpServlet {
 //            util.modifyDB("DROP TABLE IF EXISTS temproutes;");
 //            util.modifyDB("CREATE TABLE temp (id SERIAL, uuid char(36) PRIMARY KEY, route text);");
 //            util.modifyDB("CREATE TABLE routes (id SERIAL, uuid char(8) PRIMARY KEY, route text);");
-            String res = util.modifyDB("INSERT INTO temp (uuid, route) VALUES ('" + uuid + "','"+jsonObject+"')");
+            util.modifyDB("INSERT INTO temp (uuid, route) VALUES ('" + uuid + "','"+jsonObject+"')");
             System.out.println("COMPLETE");
         }
 

@@ -6,8 +6,6 @@ import java.net.URI;
 import java.sql.*;
 
 public class DBUtility {
-
-    private static final String Driver = "org.postgresql.Driver";
     private static final String ConnUrl = System.getenv("DATABASE_URL");
 
     // This is a constructor
@@ -15,9 +13,6 @@ public class DBUtility {
 
     // create a Connection to the database
     private Connection connectDB() {
-//        URI dbUri = new URI(System.getenv("DATABASE_URL"));
-
-
         Connection conn = null;
         try {
             URI dbUri = new URI(ConnUrl);
@@ -25,9 +20,6 @@ public class DBUtility {
             String password = dbUri.getUserInfo().split(":")[1];
             String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath();
             return DriverManager.getConnection(dbUrl, username, password);
-//            Class.forName(Driver);
-//            conn = DriverManager.getConnection(ConnUrl, username, password);
-//            return conn;
         } catch (Exception e) {
             e.printStackTrace();
         }

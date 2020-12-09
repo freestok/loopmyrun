@@ -27,8 +27,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@5/turf.min.js"></script>
 
 <body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="navbar-brand mx-auto">
+            
+          
+                LoopMyRun
+              <a target="_blank" href="https://github.com/freestok/loopmyrun"><i class="fa fa-github"></i></a>
+        </div>
 
+      </nav>
     <div class="container-fluid h-100">
+        <!-- Image and text -->
+
         <div class="row h-100">
             <div class="col-md-3">
                 <ul class="nav nav-pills nav-fill">
@@ -59,8 +69,10 @@
                         <input class="form-check-input" type="radio" name="distanceUnit" id="km" value="km" required>
                         <label class="form-check-label" for="inlineRadio2">Kilometers</label>
                     </div>
-                    <button type="submit" class="btn btn-primary">Find a Loop!</button>
-                    <button type="reset" id="startOver" class="btn">Start Over</button>
+                    <div>
+                        <button type="submit" class="btn btn-primary">Find a Loop!</button>
+                        <button type="reset" id="startOver" class="btn">Start Over</button>
+                    </div>
                 </form>
 
                 <!-- Loop Results tab -->

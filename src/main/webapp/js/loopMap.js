@@ -1,6 +1,6 @@
 // add map components
-// const mp = L.map('map').setView([15.9451, 15.468], 2);
-const mp = L.map('map').setView([42.962, -85.639],18);
+const mp = L.map('map').setView([15.9451, 15.468], 2);
+// const mp = L.map('map').setView([42.962, -85.639],18);
 let popup;
 
 
@@ -16,16 +16,12 @@ if (saveId) {
 		.setLatLng(mp.getBounds().getCenter())
 		.setContent('<p>Loading your route...</p>')
 		.openOn(mp);
-	console.log("GET SAVED ROUTE");
 	$.ajax({
 		type: "GET",
 		url: "/save",
 		data: { id: saveId },
 		success: showSavedRoute,
-		error: (err) => {
-			// clearInterval(checker);
-			console.log("ERROR with saveID", err)
-		}
+		error: (err) => console.log("ERROR showSavedRoute ", err)
 	});
 } else {
 	popup = L.popup({
@@ -34,7 +30,14 @@ if (saveId) {
 	})
 		.setLatLng(mp.getBounds().getCenter())
 		.setContent(`<p>Welcome! Drop a point (or search for an address), enter your distance and unit, and find a loop near you.</p>
-					 <p>If you get a wonky looking loop (or none at all), try moving your point slightly and trying again.`)
+					 <p></p>
+					 <p><em>Note: 
+						<ul>
+							<li>If you get a wonky looking loop (or none at all), try moving your point slightly and trying again.</li>
+							<li>Depending on distance, it may take a while to find a loop.</li>
+							<li>If you are having difficulties with Firefox, use Chrome or Edge instead.</li>
+						</ul>
+					</em></p>`)
 		.openOn(mp);
 }
 
@@ -59,7 +62,6 @@ mp.on('drag',()=>{
 });
 
 mp.on('geosearch/showlocation', (event) => {
-	console.log(event);
 	let latlng = event.marker._latlng;
 	addPoint(latlng);
 	mp.removeLayer(event.marker);
@@ -72,14 +74,12 @@ $('#startOver').click(() => {
 
 $("#loopForm").submit(onSubmit);
 $('#formTab').click(() => {
-	console.log('click!');
 	$('#loopForm').show();
 	$('#loopResults').hide();
 	$('#resultsTab').removeClass('active');
 	$('#formTab').addClass('active');
 });
 $('#resultsTab').click(() => {
-	console.log('click');
 	$('#loopResults').show();
 	$('#loopForm').hide();
 	$('#resultsTab').addClass('active');
@@ -91,15 +91,14 @@ function saveRoute(uid) {
 		.setLatLng(mp.getBounds().getCenter())
 		.openOn(mp);
 	let route = routesList[uid];
-	console.log("UUID: ", uuid);
 	$.ajax({
 		type: "POST",
 		url: "/save",
 		data: {route: JSON.stringify(route)},
 		success: (d) => {
 			mp.closePopup(popup);
-			let save = `https://loopmyrun.herokuapp.com/?id=${d.id}`
-			popup.setContent(`<p>Route Saved!</p> <p><a style="color:white;" href="${save}">${save}</a></p>`)
+			let save = `${window.location.origin}/?id=${d.id}`
+			popup.setContent(`<p>Route Saved!</p> <p><a style="color:white;" target="_blank" href="${save}">${save}</a></p>`)
 			.setLatLng(mp.getBounds().getCenter())
 			.openOn(mp);
 		},
@@ -107,7 +106,6 @@ function saveRoute(uid) {
 	});
 }
 function activateRoute(uid) {
-	console.log('uid',uid);
 	let route = routesList[uid];
 	removeAll();
 	displayRoute(route[0],route[1]);
@@ -141,7 +139,6 @@ function removeAll() {
 }
 function onSubmit(event) {
 	event.preventDefault();
-	pause = true;
 
 	// check marker
 	if (!marker) {
@@ -164,10 +161,10 @@ function onSubmit(event) {
 	}
 	
 	removeAll();
+	pause = true;
 
 	$("#loopResults").empty();
 	let dist = convertDist();
-	console.log(dist);
 	uuid = uuidv4();
 	let data = {
 		lat: marker._latlng.lat,
@@ -178,9 +175,9 @@ function onSubmit(event) {
 	$.ajax({
 		type: "POST",
 		url: "/getLoop",
-		data: data
-		// success: showRoutes,
-		// error: (err) => console.log("Oops, an unknown error occurred. Try adjusting your point slightly.",err)
+		data: data,
+		success: retrieveTempRoute,
+		error: () => checker = setInterval(retrieveTempRoute, 3000)
 	});
 
 	popup = L.popup({
@@ -188,14 +185,13 @@ function onSubmit(event) {
 		autoClose: true
 	})
 		.setLatLng(mp.getBounds().getCenter())
-		.setContent('<p>Finding route...</p>')
+		.setContent('<p>Finding route <i class="fa fa-repeat fa-spin" aria-hidden="true"></i></p>')
 		.openOn(mp);
 
-	checker = setInterval(retrieveTempRoute, 3000)
+	
 }
 
 function retrieveTempRoute() {
-	console.log("UUID: ", uuid);
 	$.ajax({
 		type: "GET",
 		url: "/getLoop",
@@ -203,7 +199,14 @@ function retrieveTempRoute() {
 		success: showRoutes,
 		error: (err) => {
 			// clearInterval(checker);
-			console.log("ERROR retrieveTempRoute()",err)
+			if (err.responseText == `{"type": "FeatureCollection","features": ]}`) {
+				clearInterval(checker);
+				mp.closePopup(popup);
+				alert("I couldn't find any loops for this area!")
+				return null;
+			} else {
+				console.log("ERROR retrieveTempRoute()",err)
+			}
 		}
 	});
 }
@@ -253,7 +256,6 @@ function closestFeatures(features) {
 
 function showSavedRoute(data) {
 	mp.closePopup(popup);
-	console.log("DATA: ", data);
 	let geom = data[0].geometry;
 	let dist = data[0].dist;
 	let unit = data[0].unit;
@@ -279,8 +281,8 @@ function showSavedRoute(data) {
 		iconSize: [25, 25], 
 	});
 	L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
+	dist = Math.round(dist);
 	for(let step=1;step<dist+1;step++){
-		console.log('STEP');
 		let res = unit === 'km' ? turf.along(geom, step) : turf.along(geom, step,{units:'miles'});
 		let coords = res.geometry.coordinates;
 		let numberIcon = L.icon({
@@ -288,8 +290,6 @@ function showSavedRoute(data) {
 			iconSize: [25, 25], 
 		});
 		L.marker([coords[1], coords[0]], {icon: numberIcon}).addTo(mp);
-
-		console.log(res);
 	}
 	let lyr = L.geoJson(geom).addTo(mp);
 	mp.fitBounds(lyr.getBounds());
@@ -297,7 +297,6 @@ function showSavedRoute(data) {
 }
 
 function showRoutes(data) {
-	console.log("DATA showRoutes: ",data);
 	clearInterval(checker);
 	mp.closePopup(popup);
 
@@ -316,11 +315,9 @@ function showRoutes(data) {
 	for (let feature of features) {
 		if (geometries.includes(feature.dist)) continue;
 		else forAdd.push(feature);
-		console.log('ADDING');
 		geometries.push(feature.dist);
 	}
 	forAdd = forAdd.slice(0, 3);
-	console.log('forAdd',forAdd);
 	
 	for (let i=0; i < forAdd.length; i++) {
 		let add = forAdd[i]
@@ -370,7 +367,6 @@ function displayRoute(add,dist) {
 	});
 	L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
 	for(let step=1;step<dist+1;step++){
-		console.log('STEP');
 		let res = unit === 'km' ? turf.along(add, step) : turf.along(add, step,{units:'miles'});
 		let coords = res.geometry.coordinates;
 		let numberIcon = L.icon({
@@ -378,8 +374,6 @@ function displayRoute(add,dist) {
 			iconSize: [25, 25], 
 		});
 		L.marker([coords[1], coords[0]], {icon: numberIcon}).addTo(mp);
-
-		console.log(res);
 	}
 	let lyr = L.geoJson(add).addTo(mp);
 	mp.fitBounds(lyr.getBounds());
