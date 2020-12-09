@@ -16,15 +16,15 @@ import org.json.JSONObject;
 import java.util.*;
 
 public class LoopFinder {
-    private LatLng userLoc;
+    private Point userLoc;
     private double userDist;
     private int divider;
-    private LatLng closestVert;
+    private Point closestVert;
     private String json;
     private DefaultUndirectedWeightedGraph<String, DefaultWeightedEdge> graph;
 
 
-    public LoopFinder(LatLng userLoc, double userDist) {
+    public LoopFinder(Point userLoc, double userDist) {
         this.userLoc = userLoc;
         this.userDist = userDist;
         this.divider = divider;
@@ -36,9 +36,9 @@ public class LoopFinder {
     }
 
     public String findLoops() {
-        ArrayList<Line> masterRoutes = new ArrayList<>();
+        ArrayList<LineString> masterRoutes = new ArrayList<>();
         for (int divider = 3; divider < 7; divider++) {
-            ArrayList<Line> loops = getLoops(divider);
+            ArrayList<LineString> loops = getLoops(divider);
             if (loops != null) masterRoutes.addAll(loops);
 
             setDivider(divider);
@@ -53,7 +53,7 @@ public class LoopFinder {
         return allRoutes.asGeoJSON();
     }
 
-    private ArrayList<Line> getLoops(int divider) {
+    private ArrayList<LineString> getLoops(int divider) {
         setDivider(divider);
         System.out.println("DIVIDER: " + divider);
 
@@ -61,20 +61,20 @@ public class LoopFinder {
         this.graph = new DefaultUndirectedWeightedGraph<>(DefaultWeightedEdge.class);
 
         // parse JSON
-        ArrayList<LatLng> vertexes = processJSON(json);
-        LatLng northMost = Util.getNorthmost(vertexes);
-        LatLng southMost = Util.getSouthmost(vertexes);
-        LatLng eastMost = Util.getEastmost(vertexes);
-        LatLng westMost = Util.getWestmost(vertexes);
+        ArrayList<Point> vertexes = processJSON(json);
+        Point northMost = Util.getNorthmost(vertexes);
+        Point southMost = Util.getSouthmost(vertexes);
+        Point eastMost = Util.getEastmost(vertexes);
+        Point westMost = Util.getWestmost(vertexes);
 
         // create routes
-        ArrayList<Line> northRoutes = createRoute(vertexes, northMost);
-        ArrayList<Line> southRoutes = createRoute(vertexes, southMost);
-        ArrayList<Line> eastRoutes = createRoute(vertexes, eastMost);
-        ArrayList<Line> westRoutes = createRoute(vertexes, westMost);
+        ArrayList<LineString> northRoutes = createRoute(vertexes, northMost);
+        ArrayList<LineString> southRoutes = createRoute(vertexes, southMost);
+        ArrayList<LineString> eastRoutes = createRoute(vertexes, eastMost);
+        ArrayList<LineString> westRoutes = createRoute(vertexes, westMost);
 
         // combine routes into one array
-        ArrayList<Line> combinedRoutes = new ArrayList<>();
+        ArrayList<LineString> combinedRoutes = new ArrayList<>();
         if (northRoutes != null) combinedRoutes.addAll(northRoutes);
         if (southRoutes != null) combinedRoutes.addAll(southRoutes);
         if (eastRoutes != null) combinedRoutes.addAll(eastRoutes);
@@ -83,13 +83,13 @@ public class LoopFinder {
         if (combinedRoutes.isEmpty()) return null;
 
         // remove duplicate routes
-        Set<Line> s = new LinkedHashSet<>(combinedRoutes);
+        Set<LineString> s = new LinkedHashSet<>(combinedRoutes);
         combinedRoutes.clear();
         combinedRoutes.addAll(s);
         return combinedRoutes;
     }
 
-    private String requestOverpass(double userDist, LatLng userLoc) {
+    private String requestOverpass(double userDist, Point userLoc) {
         int div;
         if (userDist <= 10000) div = 2;
         else if (userDist <= 20000) div = 3;
@@ -106,9 +106,9 @@ public class LoopFinder {
         return json;
     }
 
-    private ArrayList<LatLng> processJSON(String json) {
-        ArrayList<LatLng> vertexWithin = new ArrayList<>();
-        LatLng[] closestVert = {new LatLng(0,0)};
+    private ArrayList<Point> processJSON(String json) {
+        ArrayList<Point> vertexWithin = new ArrayList<>();
+        Point[] closestVert = {new Point(0,0)};
         double[] closestDist = {1e7};
 
         JSONObject jsonObj = new JSONObject(json);
@@ -119,12 +119,12 @@ public class LoopFinder {
             JSONObject tags = element.getJSONObject("tags");
             String tag = tags.getString("highway");
             JSONArray geom = element.getJSONArray("geometry");
-            ArrayList<LatLng> points = new ArrayList<LatLng>();
+            ArrayList<Point> points = new ArrayList<Point>();
             geom.forEach(g -> {
                 JSONObject xy = ((JSONObject) g);
                 double lon = xy.getDouble("lon");
                 double lat = xy.getDouble("lat");
-                LatLng p = new LatLng(lat, lon);
+                Point p = new Point(lat, lon);
                 points.add(p);
                 graph.addVertex(p.coords());
                 double dist = Util.haversine(userLoc.x(), userLoc.y(), lat, lon);
@@ -142,7 +142,7 @@ public class LoopFinder {
                     vertexWithin.add(p);
                 }
             });
-            Line line = new Line(points);
+            LineString line = new LineString(points);
             line.createEdges(graph, tag);
         });
         System.out.println("Done going through elements");
@@ -150,25 +150,25 @@ public class LoopFinder {
         return vertexWithin;
     }
 
-    private ArrayList<Line> createRoute(ArrayList<LatLng> vertexes, LatLng originPoint) {
+    private ArrayList<LineString> createRoute(ArrayList<Point> vertexes, Point originPoint) {
         ClockwiseSort clockwiseSort = new ClockwiseSort(originPoint);
         Collections.sort(vertexes, clockwiseSort);
-        ArrayList<Line> route = traverseCircle(vertexes);
+        ArrayList<LineString> route = traverseCircle(vertexes);
         return route;
     }
 
-    private ArrayList<Line> traverseCircle(ArrayList<LatLng> vertexes) {
+    private ArrayList<LineString> traverseCircle(ArrayList<Point> vertexes) {
         int length = vertexes.size();
         long jumpAdd = (long) Math.floor(length/10);
-        ArrayList<Line> finishedCycles = new ArrayList<>();
+        ArrayList<LineString> finishedCycles = new ArrayList<>();
         ArrayList<Double> finishedLengths = new ArrayList<>();
         for (int i = 3; i < 10; i++) { // traverse circle
             long jump = 0;
-            ArrayList<LatLng> route = new ArrayList<>();
+            ArrayList<Point> route = new ArrayList<>();
 
             try {
                 for (int j = 0; j < i; j++) { // points by jump
-                    LatLng nextPoint = vertexes.get((int) jump);
+                    Point nextPoint = vertexes.get((int) jump);
                     route.add(nextPoint);
                     jump += jumpAdd;
                 }
@@ -216,7 +216,7 @@ public class LoopFinder {
 
             for (List<DefaultEdge> subL: cycles) {
                 // deconstruct cycle and recast to a linestring
-                ArrayList<LatLng> cyclePoints = new ArrayList<>();
+                ArrayList<Point> cyclePoints = new ArrayList<>();
                 for (DefaultEdge subEdge: subL) {
                     String[] src = subGraph.getEdgeSource(subEdge).split(",");
                     String[] end = subGraph.getEdgeTarget(subEdge).split(",");
@@ -225,10 +225,10 @@ public class LoopFinder {
                     double srcY = Double.parseDouble(src[1]);
                     double endX = Double.parseDouble(end[0]);
                     double endY = Double.parseDouble(end[1]);
-                    cyclePoints.add(new LatLng(srcY, srcX));
-                    cyclePoints.add(new LatLng(endY, endX));
+                    cyclePoints.add(new Point(srcY, srcX));
+                    cyclePoints.add(new Point(endY, endX));
                 }
-                Line cycleLine = new Line(cyclePoints);
+                LineString cycleLine = new LineString(cyclePoints);
 //                double lowerRange = userDist * .75;
 //                double upperRange = userDist * 1.25;
                 finishedCycles.add(cycleLine);

@@ -2,9 +2,9 @@ package servlet.loopmyrun;
 
 import java.util.Comparator;
 
-public class NorthSort implements Comparator<LatLng> {
+public class NorthSort implements Comparator<Point> {
     @Override
-    public int compare(LatLng p1, LatLng p2) {
+    public int compare(Point p1, Point p2) {
         return 0;
     }
 

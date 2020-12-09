@@ -7,18 +7,18 @@ import java.util.ArrayList;
 
 import static servlet.loopmyrun.Util.ways;
 
-public class Line {
-    private ArrayList<LatLng> linestring;
+public class LineString {
+    private ArrayList<Point> linestring;
     private double length;
 
 
-    public Line(ArrayList<LatLng> linestring){
+    public LineString(ArrayList<Point> linestring){
         this.linestring = linestring;
 //        this.length = calcLength();
     }
 
     public void createEdges(DefaultUndirectedWeightedGraph<String,DefaultWeightedEdge> g, String tag) {
-        ArrayList<LatLng> line = this.linestring;
+        ArrayList<Point> line = this.linestring;
         for (int i = 0; i < line.size(); i++) {
             if (i + 1 < line.size()) {
                 String p1 = line.get(i).coords();
@@ -40,7 +40,7 @@ public class Line {
 
     public String printCoords() {
         String toPrint = "";
-        for (LatLng point: this.linestring) {
+        for (Point point: this.linestring) {
             toPrint += "["+point.coords()+"], ";
         }
         toPrint = toPrint.substring(0,toPrint.length()-2);
@@ -51,7 +51,7 @@ public class Line {
 //    private double calcLength() {
 //        double length, totalLength;
 //        double lat1, lon1, lat2, lon2;
-//        LatLng pt1, pt2;
+//        Point pt1, pt2;
 //
 //        totalLength = 0.0;
 //        for (int i = 0; i < this.linestring.size(); i++) {

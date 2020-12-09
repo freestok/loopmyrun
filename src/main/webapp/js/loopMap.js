@@ -1,38 +1,42 @@
 // add map components
 // const mp = L.map('map').setView([15.9451, 15.468], 2);
-const mp = L.map('map', {
-	// don't add the zoom control
-	zoomControl: false,
-	// disable drag and zoom handlers
-	dragging: false,
-	touchZoom: false,
-	doubleClickZoom: false,
-	scrollWheelZoom: false,
-	boxZoom: false,
-	keyboard: false,
-	tap: false
-}).setView([42.962, -85.639],18);
+const mp = L.map('map').setView([42.962, -85.639],18);
+let popup;
 
-var popup = L.popup({
-	closeButton: true,
-	autoClose: true
-  })
-  .setLatLng(mp.getBounds().getCenter())
-  .setContent('<p>Welcome!</p>')
-  .openOn(mp);
-  
-  mp.once('popupclose', function(e){
-	// add the zoom control
-	L.control.zoom().addTo(mp);
-	// enable drag and zoom handlers
-	mp.dragging.enable();
-	mp.touchZoom.enable();
-	mp.doubleClickZoom.enable();
-	mp.scrollWheelZoom.enable();
-	mp.boxZoom.enable();
-	mp.keyboard.enable();
-	if (mp.tap) mp.tap.enable();
-  });
+
+// check to see if accessing saved route
+let urlString = window.location.href
+let url = new URL(urlString);
+let saveId = url.searchParams.get("id");
+if (saveId) {
+	popup = L.popup({
+		closeButton: true,
+		autoClose: true
+	})
+		.setLatLng(mp.getBounds().getCenter())
+		.setContent('<p>Loading your route...</p>')
+		.openOn(mp);
+	console.log("GET SAVED ROUTE");
+	$.ajax({
+		type: "GET",
+		url: "/save",
+		data: { id: saveId },
+		success: showSavedRoute,
+		error: (err) => {
+			// clearInterval(checker);
+			console.log("ERROR with saveID", err)
+		}
+	});
+} else {
+	popup = L.popup({
+		closeButton: true,
+		autoClose: true
+	})
+		.setLatLng(mp.getBounds().getCenter())
+		.setContent(`<p>Welcome! Drop a point (or search for an address), enter your distance and unit, and find a loop near you.</p>
+					 <p>If you get a wonky looking loop (or none at all), try moving your point slightly and trying again.`)
+		.openOn(mp);
+}
 
 const provider = new GeoSearch.EsriProvider();
 const searchControl = new GeoSearch.GeoSearchControl({
@@ -44,12 +48,16 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map
 }).addTo(mp);
 mp.addControl(searchControl);
 
-let marker, pause;
+let marker, pause, uuid, checker;
 let routesList = {};
 
 // listeners
 mp.on('mouseover', mouseEnter);
 mp.on('click',mapClick);
+mp.on('drag',()=>{
+	if (!pause) mp.closePopup(popup);
+});
+
 mp.on('geosearch/showlocation', (event) => {
 	console.log(event);
 	let latlng = event.marker._latlng;
@@ -78,6 +86,26 @@ $('#resultsTab').click(() => {
 	$('#formTab').removeClass('active');
 });
 
+function saveRoute(uid) {
+	popup.setContent('<p>Saving Route...</p>')
+		.setLatLng(mp.getBounds().getCenter())
+		.openOn(mp);
+	let route = routesList[uid];
+	console.log("UUID: ", uuid);
+	$.ajax({
+		type: "POST",
+		url: "/save",
+		data: {route: JSON.stringify(route)},
+		success: (d) => {
+			mp.closePopup(popup);
+			let save = `https://loopmyrun.herokuapp.com/?id=${d.id}`
+			popup.setContent(`<p>Route Saved!</p> <p><a style="color:white;" href="${save}">${save}</a></p>`)
+			.setLatLng(mp.getBounds().getCenter())
+			.openOn(mp);
+		},
+		error: (err) => console.log("ERROR saveRoute()",err)
+	});
+}
 function activateRoute(uid) {
 	console.log('uid',uid);
 	let route = routesList[uid];
@@ -118,6 +146,7 @@ function onSubmit(event) {
 	// check marker
 	if (!marker) {
 		alert('Select a location, please.');
+		mp.closePopup(mp);
 		return null;
 	}
 
@@ -126,9 +155,11 @@ function onSubmit(event) {
 	let unit = $('input[name="distanceUnit"]:checked').val();
 	if (unit === 'km' && userDist > 32) {
 		alert('Your distance is too high! Try again.');
+		mp.closePopup(mp);
 		return null;
 	} else if (unit === 'mile' && userDist > 20) {
 		alert('Your distance is too high! Try again.');
+		mp.closePopup(mp);
 		return null;
 	}
 	
@@ -137,18 +168,50 @@ function onSubmit(event) {
 	$("#loopResults").empty();
 	let dist = convertDist();
 	console.log(dist);
+	uuid = uuidv4();
 	let data = {
 		lat: marker._latlng.lat,
 		lng: marker._latlng.lng,
-		distance: dist
+		distance: dist,
+		uuid: uuid
 	}
 	$.ajax({
 		type: "POST",
 		url: "/getLoop",
-		data: data,
-		success: showRoutes,
-		error: (err) => alert("Oops, an unknown error occurred. Try adjusting your point slightly.",err)
+		data: data
+		// success: showRoutes,
+		// error: (err) => console.log("Oops, an unknown error occurred. Try adjusting your point slightly.",err)
 	});
+
+	popup = L.popup({
+		closeButton: true,
+		autoClose: true
+	})
+		.setLatLng(mp.getBounds().getCenter())
+		.setContent('<p>Finding route...</p>')
+		.openOn(mp);
+
+	checker = setInterval(retrieveTempRoute, 3000)
+}
+
+function retrieveTempRoute() {
+	console.log("UUID: ", uuid);
+	$.ajax({
+		type: "GET",
+		url: "/getLoop",
+		data: {uuid: uuid},
+		success: showRoutes,
+		error: (err) => {
+			// clearInterval(checker);
+			console.log("ERROR retrieveTempRoute()",err)
+		}
+	});
+}
+
+function uuidv4() {
+	return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+		(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+	);
 }
 
 function convertDist() {
@@ -174,30 +237,69 @@ function metersToUnit(f) {
 
 function closestFeatures(features) {
 	let d = Number($('#userDistance').val())
+	let userUnit = $('input[name="distanceUnit"]:checked').val();
 	closest = [];
 	let origin = [marker._latlng.lng, marker._latlng.lat];
 	for (let feature of features) {
 		// make sure route isn't too far away
 		let startPoint = feature.geometry.coordinates[0]
 		if (turf.distance(startPoint, origin) > .8) continue;
-
-		// let line = turf.cleanCoords(feature);
-		// let line = feature;
-		// let poly = turf.lineToPolygon(feature);
-		// let unkink = turf.kinks(poly);
-		// console.log('unkink:',unkink);
-		// console.log('unkink',unkink);
-		// let line = turf.polygonToLine(unkink);
-		// console.log('FEATURE:', feature);
 		feature.dist = metersToUnit(feature)[0];
+		feature.unit = userUnit === 'mile' ? 'mi.' : 'km';
 		closest.push(feature);
 	}
 	return closest.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
 }
+
+function showSavedRoute(data) {
+	mp.closePopup(popup);
+	console.log("DATA: ", data);
+	let geom = data[0].geometry;
+	let dist = data[0].dist;
+	let unit = data[0].unit;
+	let msg = `
+	<div class="card text-white bg-info mb-3" style="width: 100%;">
+		<div class="card-body">
+			<h5 class="card-title">Saved Route</h5>
+			<h6 class="card-subtitle mb-3">${dist.toFixed(2)} ${unit}</h6>
+		</div>
+	</div>
+	`
+	$('#loopResults').append(msg);
+	$('#resultsTab').removeClass('disabled');
+	$('#resultsTab').addClass('active');
+	$('#formTab').removeClass('active');
+	$('#loopForm').hide();
+	$('#loopResults').show();
+	pause = false;
+
+	let c = geom.coordinates[0];
+	let startIcon = L.icon({
+		iconUrl: `assets/start.png`,
+		iconSize: [25, 25], 
+	});
+	L.marker([c[1], c[0]], {icon: startIcon}).addTo(mp);
+	for(let step=1;step<dist+1;step++){
+		console.log('STEP');
+		let res = unit === 'km' ? turf.along(geom, step) : turf.along(geom, step,{units:'miles'});
+		let coords = res.geometry.coordinates;
+		let numberIcon = L.icon({
+			iconUrl: `assets/${step}.png`,
+			iconSize: [25, 25], 
+		});
+		L.marker([coords[1], coords[0]], {icon: numberIcon}).addTo(mp);
+
+		console.log(res);
+	}
+	let lyr = L.geoJson(geom).addTo(mp);
+	mp.fitBounds(lyr.getBounds());
+
+}
+
 function showRoutes(data) {
-	// remove marker
-	// mp.removeLayer(marker);
-	// marker = null;
+	console.log("DATA showRoutes: ",data);
+	clearInterval(checker);
+	mp.closePopup(popup);
 
 	// if no routes found
 	if (data.message == 'no loops') {
@@ -242,14 +344,11 @@ function showRoutes(data) {
 			<div class="card-body">
 				<h5 id="${cardID}link" class="card-title">${title}</h5>
 				<h6 class="card-subtitle mb-3">${convertedLength[1]}</h6>
-				<a href="#" id="${cardID}btn" class="btn ${buttonColor} route">Save Route</a>
+				<a href="#" id="${cardID}btn" onclick="saveRoute('${cardID}');return false;" class="btn ${buttonColor} route">Save Route</a>
 			</div>
 		</div>
 		`
 		$('#loopResults').append(msg);
-
-		console.log('RESULT');
-		console.log('dist',dist);
 
 		if (i == 0) displayRoute(add,dist);
 		routesList[cardID] = [add, dist];
@@ -265,7 +364,6 @@ function showRoutes(data) {
 function displayRoute(add,dist) {
 	let unit = $('input[name="distanceUnit"]:checked').val();
 	let c = add.geometry.coordinates[0];
-	console.log('***c',c);
 	let startIcon = L.icon({
 		iconUrl: `assets/start.png`,
 		iconSize: [25, 25], 
@@ -283,7 +381,8 @@ function displayRoute(add,dist) {
 
 		console.log(res);
 	}
-	L.geoJson(add).addTo(mp);
+	let lyr = L.geoJson(add).addTo(mp);
+	mp.fitBounds(lyr.getBounds());
 }
 function addPoint(latlng) {
 	if (marker) mp.removeLayer(marker);
@@ -299,14 +398,16 @@ function addPoint(latlng) {
 }
 
 function mapClick(event) {
-	// resultsTab
-	let resultsClass = $('#resultsTab').attr("class").split(/\s+/);
-	if (resultsClass.includes('active')) return null;
-	if (pause) return null;
+	if(!pause) {
+		mp.closePopup(popup);
+		// resultsTab
+		let resultsClass = $('#resultsTab').attr("class").split(/\s+/);
+		if (resultsClass.includes('active')) return null;
+		if (pause) return null;
 
-	if (marker) mp.removeLayer(marker);
-	addPoint(event.latlng);
-
+		if (marker) mp.removeLayer(marker);
+		addPoint(event.latlng);
+	}
 }
 function mouseEnter(event) {
 	if (marker) {

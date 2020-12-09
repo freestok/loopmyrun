@@ -4,19 +4,19 @@ import java.util.ArrayList;
 import java.util.StringJoiner;
 
 public class MultiLineString {
-    private ArrayList<Line> multilinestring;
+    private ArrayList<LineString> multilinestring;
 
-    public MultiLineString(ArrayList<Line> multilinestring) {
+    public MultiLineString(ArrayList<LineString> multilinestring) {
         this.multilinestring = multilinestring;
     }
 
     public String asGeoJSON() {
-//        String geoJson;
+        System.out.println("Constructing GeoJSON...");
         StringJoiner geoJson = new StringJoiner("");
         geoJson.add("{\"type\": \"FeatureCollection\",");
         geoJson.add("\"features\": [");
 
-        for (Line line: multilinestring) {
+        for (LineString line: multilinestring) {
             String feature;
             feature = "{\"type\":\"Feature\",\"properties\":{\"ln\":"+ line.getLength()+"},";
             feature += "\"geometry\":{\"type\":\"LineString\",\"coordinates\":" + line.printCoords() + "}},";
