@@ -41,7 +41,7 @@ public class GetLoopServlet extends HttpServlet {
                 }
                 System.out.println("routeJSON " + routeJSON);
 //                // delete from temp
-                util.modifyDB("DELETE FROM temp WHERE uuid = '"+uuid+"'");
+                util.modifyDB("DELETE FROM temp WHERE 1=1");
                 PrintWriter out = response.getWriter();
                 out.print(routeJSON);
                 out.flush();
