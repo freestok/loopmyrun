@@ -31,13 +31,7 @@ if (saveId) {
 		.setLatLng(mp.getBounds().getCenter())
 		.setContent(`<p>Welcome! Drop a point (or search for an address), enter your distance and unit, and find a loop near you.</p>
 					 <p></p>
-					 <p><em>Note: 
-						<ul>
-							<li>If you get a wonky looking loop (or none at all), try moving your point slightly and trying again.</li>
-							<li>Depending on distance, it may take a while to find a loop.</li>
-							<li>If you are having difficulties with Firefox, use Chrome or Edge instead.</li>
-						</ul>
-					</em></p>`)
+					 <p><em>Note: Depending on distance, it may take a while to find a loop.</em></p>`)
 		.openOn(mp);
 }
 
@@ -312,6 +306,7 @@ function showRoutes(data) {
 	// check for duplicates
 	let geometries = [];
 	let forAdd = [];
+	console.log('forAdd',forAdd);
 	for (let feature of features) {
 		if (geometries.includes(feature.dist)) continue;
 		else forAdd.push(feature);

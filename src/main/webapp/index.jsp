@@ -28,10 +28,7 @@
 
 <body>
     <nav class="navbar navbar-dark bg-dark">
-        <div class="navbar-brand mx-auto">
-            
-          
-                LoopMyRun
+        <div class="navbar-brand mx-auto">LoopMyRun
               <a target="_blank" href="https://github.com/freestok/loopmyrun"><i class="fa fa-github"></i></a>
         </div>
 
