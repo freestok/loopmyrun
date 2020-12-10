@@ -77,8 +77,6 @@ public class GetLoopServlet extends HttpServlet {
 
             if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
 
-            String shortId = RandomStringUtils.random(8, "0123456789BCDFGHJKLMNPQRSTVWXYZ");
-
             // urlCode char(8) PRIMARY KEY
 
             // 1. create a user

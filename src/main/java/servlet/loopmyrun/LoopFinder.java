@@ -42,8 +42,6 @@ public class LoopFinder {
             if (loops != null) masterRoutes.addAll(loops);
 
             setDivider(divider);
-
-//            if (userDist >= 2) break; // don't do this multiple times if larger than 10 miles
         }
 
         if (masterRoutes == null) return null;

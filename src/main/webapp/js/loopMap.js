@@ -116,9 +116,15 @@ function activateRoute(uid) {
 
 	let newTitle;
 	switch(uid) {
-		case('route1'): newTitle = 'Route #1';
-		case('route2'): newTitle = 'Route #2';
-		case('route3'): newTitle = 'Route #3';
+		case('route1'): 
+			newTitle = 'Route #1';
+			break;
+		case('route2'): 
+			newTitle = 'Route #2';
+			break;
+		case('route3'): 
+			newTitle = 'Route #3';
+			break
 	}
 
 	$('#'+uid).attr('class','card text-white bg-info mb-3');
