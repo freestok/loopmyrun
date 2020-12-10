@@ -30,6 +30,7 @@
     <nav class="navbar navbar-dark bg-dark">
         <div class="navbar-brand mx-auto">LoopMyRun
               <a target="_blank" href="https://github.com/freestok/loopmyrun"><i class="fa fa-github"></i></a>
+              <a target="_blank" href="https://freestonekray.medium.com/generating-running-loops-with-graph-theory-87ca4a80add6"><i class="fa fa-info-circle"></i></a>
         </div>
 
       </nav>
