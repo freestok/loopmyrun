@@ -100,6 +100,7 @@ function saveRoute(uid) {
 	});
 }
 function activateRoute(uid) {
+	// this function could be cleaner
 	let route = routesList[uid];
 	removeAll();
 	displayRoute(route[0],route[1]);
@@ -108,8 +109,6 @@ function activateRoute(uid) {
 	$('#route1link').html(`<a href="#" onclick="activateRoute('route1');return false;">Route #1</a>`);
 	$('#route2link').html(`<a href="#" onclick="activateRoute('route2');return false;">Route #2</a>`);
 	$('#route3link').html(`<a href="#" onclick="activateRoute('route3');return false;">Route #3</a>`);
-	
-
 	
 	$('.card').attr('class','card bg-light mb-3');
 	$('.route').attr('class','btn btn-primary route');
@@ -217,6 +216,7 @@ function uuidv4() {
 	);
 }
 
+
 function convertDist() {
 	let dist = $('#userDistance').val()
 	let unit = $('input[name="distanceUnit"]:checked').val();
@@ -244,12 +244,33 @@ function closestFeatures(features) {
 	closest = [];
 	let origin = [marker._latlng.lng, marker._latlng.lat];
 	for (let feature of features) {
-		// make sure route isn't too far away
+		// clean duplicate points
+		let coords = feature.geometry.coordinates;
+		let goodCoords = [];
+		let coordChecker = [];
+		for (let coord of coords) {
+			let coordString = coord.join();
+
+			// skip if already in list
+			if (coordChecker.includes(coordString)) continue
+			coordChecker.push(coordString);
+			goodCoords.push(coord);
+		}
+		goodCoords.push(coords[coords.length-1]) // finish loop
+		// overwrite feature with cleaned coordinates
+		feature = turf.lineString(goodCoords);
+
+		// skip if there are kinks
+		if (turf.kinks(feature).features.length > 0) continue;
+
+		// make sure route isn't too far away, skip if so
 		let startPoint = feature.geometry.coordinates[0]
 		if (turf.distance(startPoint, origin) > .8) continue;
+
 		feature.dist = metersToUnit(feature)[0];
-		feature.unit = userUnit === 'mile' ? 'mi.' : 'km';
+		feature.unit = userUnit === 'mile' ? 'mi.' : 'km.';
 		closest.push(feature);
+
 	}
 	return closest.sort((a, b) => Math.abs(d- a.dist) - Math.abs(d - b.dist));
 }
@@ -312,7 +333,6 @@ function showRoutes(data) {
 	// check for duplicates
 	let geometries = [];
 	let forAdd = [];
-	console.log('forAdd',forAdd);
 	for (let feature of features) {
 		if (geometries.includes(feature.dist)) continue;
 		else forAdd.push(feature);

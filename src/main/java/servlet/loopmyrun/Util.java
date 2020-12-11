@@ -14,9 +14,8 @@ public class Util {
         put("secondary_link", 4);
         put("tertiary", 3);
         put("tertiary_link", 3);
-        put("residential", 2);
-        put("service", 2);
-        put("pedestrian", 1);
+        put("residential", 3);
+        put("service", 4);
         put("footway", 1);
         put("pedestrian", 1);
         put("path", 1);

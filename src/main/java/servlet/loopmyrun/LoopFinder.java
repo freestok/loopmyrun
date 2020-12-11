@@ -95,7 +95,7 @@ public class LoopFinder {
         else if (userDist <= 40000) div = 5;
         else div = 6;
         String query = "[out:json];way[highway][\"highway\"~\"primary|secondary|tertiary|" +
-                "residential|unclassified|primary_link|secondary_link|tertiary_link|service|path\"]" +
+                "residential|unclassified|primary_link|secondary_link|tertiary_link|path|pedestrian|service\"]" +
                 "(around:"+userDist/div+","+userLoc.x()+","+userLoc.y()+");out geom;";
         HttpRequest response = HttpRequest
                 .post("http://overpass-api.de/api/interpreter")
