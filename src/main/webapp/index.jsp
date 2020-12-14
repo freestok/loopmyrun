@@ -9,6 +9,7 @@
 <meta name="keywords" content="running, loops, walk, bike" />
 <meta name="author" content="Kray Freestone" />
 <meta name="language" content="EN" />
+<meta http-equiv="Content-Security-Policy" content="default-src https:">
 
 <!-- favicon  -->
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
