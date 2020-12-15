@@ -22,12 +22,15 @@ public class LoopFinder {
     private Point closestVert;
     private String json;
     private DefaultUndirectedWeightedGraph<String, DefaultWeightedEdge> graph;
+    private ArrayList<Point> vertexWithin3 = new ArrayList<>();
+    private ArrayList<Point> vertexWithin4 = new ArrayList<>();
+    private ArrayList<Point> vertexWithin5 = new ArrayList<>();
+    private ArrayList<Point> vertexWithin6 = new ArrayList<>();
 
 
     public LoopFinder(Point userLoc, double userDist) {
         this.userLoc = userLoc;
         this.userDist = userDist;
-        this.divider = divider;
         this.json = requestOverpass(userDist,userLoc);
     }
 
@@ -36,13 +39,13 @@ public class LoopFinder {
     }
 
     public String findLoops() {
-        ArrayList<LineString> masterRoutes = new ArrayList<>();
-        for (int divider = 3; divider < 7; divider++) {
-            ArrayList<LineString> loops = getLoops(divider);
-            if (loops != null) masterRoutes.addAll(loops);
-
-            setDivider(divider);
-        }
+        ArrayList<LineString> masterRoutes = getLoops();
+//        for (int divider = 3; divider < 7; divider++) {
+//            ArrayList<LineString> loops = getLoops(divider);
+//            if (loops != null) masterRoutes.addAll(loops);
+//
+//            setDivider(divider);
+//        }
 
         if (masterRoutes == null) return null;
 
@@ -51,15 +54,30 @@ public class LoopFinder {
         return allRoutes.asGeoJSON();
     }
 
-    private ArrayList<LineString> getLoops(int divider) {
-        setDivider(divider);
-        System.out.println("DIVIDER: " + divider);
-
+    private ArrayList<LineString> getLoops() {
         // initialize graph
         this.graph = new DefaultUndirectedWeightedGraph<>(DefaultWeightedEdge.class);
 
         // parse JSON
-        ArrayList<Point> vertexes = processJSON(json);
+        processJSON(json);
+
+        ArrayList<LineString> allLoops = new ArrayList<>();
+
+        // process vertexes for each within distance
+        ArrayList<LineString> loop3 = processVertexes(vertexWithin3);
+        ArrayList<LineString> loop4 = processVertexes(vertexWithin4);
+        ArrayList<LineString> loop5 = processVertexes(vertexWithin5);
+        ArrayList<LineString> loop6 = processVertexes(vertexWithin6);
+
+        if (loop3 != null) allLoops.addAll(loop3);
+        if (loop4 != null) allLoops.addAll(loop4);
+        if (loop5 != null) allLoops.addAll(loop5);
+        if (loop6 != null) allLoops.addAll(loop6);
+
+        return allLoops;
+    }
+
+    private ArrayList<LineString> processVertexes(ArrayList<Point> vertexes) {
         Point northMost = Util.getNorthmost(vertexes);
         Point southMost = Util.getSouthmost(vertexes);
         Point eastMost = Util.getEastmost(vertexes);
@@ -88,15 +106,15 @@ public class LoopFinder {
     }
 
     private String requestOverpass(double userDist, Point userLoc) {
-        int div;
-        if (userDist <= 10000) div = 2;
-        else if (userDist <= 20000) div = 3;
-        else if (userDist <= 30000) div = 4;
-        else if (userDist <= 40000) div = 5;
-        else div = 6;
+//        int div;
+//        if (userDist <= 10000) div = 2;
+//        else if (userDist <= 20000) div = 3;
+//        else if (userDist <= 30000) div = 4;
+//        else if (userDist <= 40000) div = 5;
+//        else div = 6;
         String query = "[out:json];way[highway][\"highway\"~\"primary|secondary|tertiary|" +
                 "residential|unclassified|primary_link|secondary_link|tertiary_link|path|pedestrian|service\"]" +
-                "(around:"+userDist/div+","+userLoc.x()+","+userLoc.y()+");out geom;";
+                "(around:"+userDist/2.5+","+userLoc.x()+","+userLoc.y()+");out geom;";
         HttpRequest response = HttpRequest
                 .post("http://overpass-api.de/api/interpreter")
                 .send("data="+query);
@@ -104,15 +122,13 @@ public class LoopFinder {
         return json;
     }
 
-    private ArrayList<Point> processJSON(String json) {
-        ArrayList<Point> vertexWithin = new ArrayList<>();
+    private void processJSON(String json) {
         Point[] closestVert = {new Point(0,0)};
         double[] closestDist = {1e7};
 
         JSONObject jsonObj = new JSONObject(json);
         JSONArray elements = jsonObj.getJSONArray("elements");
         elements.forEach(e -> {
-//            System.out.println(e);
             JSONObject element = ((JSONObject) e); // recast object to JSON Object
             JSONObject tags = element.getJSONObject("tags");
             String tag = tags.getString("highway");
@@ -134,18 +150,25 @@ public class LoopFinder {
                 }
 
                 // check if point is within certain distance
-                double lowerRange = (userDist/divider) * .95;
-                double upperRange = (userDist/divider) * 1.05;
-                if (dist >= lowerRange && dist <= upperRange) {
-                    vertexWithin.add(p);
-                }
+                double lower3 = (userDist/3) * .95;
+                double upper3 = (userDist/3) * 1.05;
+                double lower4 = (userDist/4) * .95;
+                double upper4 = (userDist/4) * 1.05;
+                double lower5 = (userDist/5) * .95;
+                double upper5 = (userDist/5) * 1.05;
+                double lower6 = (userDist/6) * .95;
+                double upper6 = (userDist/6) * 1.05;
+
+                if (dist >= lower3 && dist <= upper3) vertexWithin3.add(p);
+                else if (dist >= lower4 && dist <= upper4) vertexWithin4.add(p);
+                else if (dist >= lower5 && dist <= upper5) vertexWithin5.add(p);
+                else if (dist >= lower6 && dist <= upper6) vertexWithin6.add(p);
             });
             LineString line = new LineString(points);
             line.createEdges(graph, tag);
         });
         System.out.println("Done going through elements");
         this.closestVert = closestVert[0];
-        return vertexWithin;
     }
 
     private ArrayList<LineString> createRoute(ArrayList<Point> vertexes, Point originPoint) {
