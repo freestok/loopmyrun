@@ -201,6 +201,8 @@ function retrieveTempRoute() {
 				mp.closePopup(popup);
 				alert("I couldn't find any loops for this area!");
 				return;
+			} else if (err.statusText === 'Service Unavailable') {
+				return;
 			} else {
 				console.log(err);
 				clearInterval(checker);
