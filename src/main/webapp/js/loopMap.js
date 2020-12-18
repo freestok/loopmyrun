@@ -149,11 +149,11 @@ function onSubmit(event) {
 	// check distance
 	let userDist = $('#userDistance').val()
 	let unit = $('input[name="distanceUnit"]:checked').val();
-	if (unit === 'km' && userDist > 32) {
+	if (unit === 'km' && userDist > 24) {
 		alert('Your distance is too high! Try again.');
 		mp.closePopup(mp);
 		return;
-	} else if (unit === 'mile' && userDist > 20) {
+	} else if (unit === 'mile' && userDist > 15) {
 		alert('Your distance is too high! Try again.');
 		mp.closePopup(mp);
 		return;
