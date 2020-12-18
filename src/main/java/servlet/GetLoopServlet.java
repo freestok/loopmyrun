@@ -39,15 +39,22 @@ public class GetLoopServlet extends HttpServlet {
                 while (res.next()) {
                     routeJSON = res.getString("route");
                 }
-                System.out.println("routeJSON " + routeJSON);
-//                // delete from temp
-                util.modifyDB("DELETE FROM temp WHERE 1=1");
+
                 PrintWriter out = response.getWriter();
-                out.print(routeJSON);
+                System.out.println(routeJSON.length());
+                if (routeJSON.length() == 10) out.print("{\"message\": \"processing\"}");
+                else if (routeJSON.length() == 5) out.print("{\"message\": \"error\"}");
+                else if (routeJSON.length() > 10) {
+                    // delete from temp
+                    util.modifyDB("DELETE FROM temp WHERE 1=1");
+                    out.print(routeJSON);
+                }
                 out.flush();
             } catch (SQLException throwables) {
+                System.out.println("ERROR");
             }
         }
+        else System.out.println("invalid value");
     }
 
     @Override
@@ -70,23 +77,22 @@ public class GetLoopServlet extends HttpServlet {
             System.out.println("bad value");
             util.modifyDB("INSERT INTO routes VALUES ('------------------------------------','BAD VALUE')");
         } else {
-            System.out.println("good value");
-            Point p1 = new Point(lat, lng);
-            LoopFinder loopFinder = new LoopFinder(p1,userDist);
-            String jsonObject = loopFinder.findLoops();
+            try {
+                System.out.println("good value");
+                util.modifyDB("INSERT INTO temp (uuid, route) VALUES ('" + uuid + "','processing')");
+                Point p1 = new Point(lat, lng);
+                LoopFinder loopFinder = new LoopFinder(p1,userDist);
+                String jsonObject = loopFinder.findLoops();
 
-            if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
+                if (jsonObject == null) jsonObject = "{\"message\": \"no loops\"}";
 
-            // urlCode char(8) PRIMARY KEY
-
-            // 1. create a user
-//            util.modifyDB("DROP TABLE IF EXISTS routes;");
-//            util.modifyDB("DROP TABLE IF EXISTS temproutes;");
-//            util.modifyDB("CREATE TABLE temp (id SERIAL, uuid char(36) PRIMARY KEY, route text);");
-//            util.modifyDB("CREATE TABLE routes (id SERIAL, uuid char(8) PRIMARY KEY, route text);");
-            util.modifyDB("INSERT INTO temp (uuid, route) VALUES ('" + uuid + "','"+jsonObject+"')");
-            System.out.println("COMPLETE");
+                // UPDATE films SET kind = 'Dramatic' WHERE kind = 'Drama';
+                util.modifyDB("UPDATE temp SET route = '"+jsonObject+"' WHERE uuid = '"+uuid+"';");
+                System.out.println("COMPLETE");
+            }
+            catch(Exception e) {
+                util.modifyDB("UPDATE temp SET route = 'error' WHERE uuid = '"+uuid+"';");
+            }
         }
-
     }
 }

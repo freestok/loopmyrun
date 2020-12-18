@@ -143,7 +143,7 @@ function onSubmit(event) {
 	if (!marker) {
 		alert('Select a location, please.');
 		mp.closePopup(mp);
-		return null;
+		return;
 	}
 
 	// check distance
@@ -152,11 +152,11 @@ function onSubmit(event) {
 	if (unit === 'km' && userDist > 32) {
 		alert('Your distance is too high! Try again.');
 		mp.closePopup(mp);
-		return null;
+		return;
 	} else if (unit === 'mile' && userDist > 20) {
 		alert('Your distance is too high! Try again.');
 		mp.closePopup(mp);
-		return null;
+		return;
 	}
 	
 	removeAll();
@@ -174,9 +174,7 @@ function onSubmit(event) {
 	$.ajax({
 		type: "POST",
 		url: "/getLoop",
-		data: data,
-		success: retrieveTempRoute,
-		error: () => checker = setInterval(retrieveTempRoute, 3000)
+		data: data
 	});
 
 	popup = L.popup({
@@ -187,7 +185,7 @@ function onSubmit(event) {
 		.setContent('<p>Finding route <i class="fa fa-repeat fa-spin" aria-hidden="true"></i></p>')
 		.openOn(mp);
 
-	
+	checker = setInterval(retrieveTempRoute, 3000);
 }
 
 function retrieveTempRoute() {
@@ -201,10 +199,12 @@ function retrieveTempRoute() {
 			if (err.responseText == `{"type": "FeatureCollection","features": ]}`) {
 				clearInterval(checker);
 				mp.closePopup(popup);
-				alert("I couldn't find any loops for this area!")
-				return null;
+				alert("I couldn't find any loops for this area!");
+				return;
 			} else {
-				console.log("ERROR retrieveTempRoute()",err)
+				console.log(err);
+				clearInterval(checker);
+				alert('An error occurred. I am just as confused as you are.');
 			}
 		}
 	});
@@ -318,13 +318,21 @@ function showSavedRoute(data) {
 }
 
 function showRoutes(data) {
+	console.log('DATA',data);
+	if (data.message == 'processing') return;
+
 	clearInterval(checker);
+	if (data.message == 'error') {
+		alert('An error occurred. I am just as confused as you are.');
+		return
+	}
+	
 	mp.closePopup(popup);
 
 	// if no routes found
 	if (data.message == 'no loops') {
 		alert("I couldn't find any loops for this area!")
-		return null;
+		return;
 	}
 	
 	let dataFeats = data.features;
@@ -417,8 +425,8 @@ function mapClick(event) {
 		mp.closePopup(popup);
 		// resultsTab
 		let resultsClass = $('#resultsTab').attr("class").split(/\s+/);
-		if (resultsClass.includes('active')) return null;
-		if (pause) return null;
+		if (resultsClass.includes('active')) return;
+		if (pause) return;
 
 		if (marker) mp.removeLayer(marker);
 		addPoint(event.latlng);
@@ -429,7 +437,7 @@ function mouseEnter(event) {
 		$('.leaflet-container').css('cursor','');
 	} else {
 		let resultsClass = $('#resultsTab').attr("class").split(/\s+/);
-		if (resultsClass.includes('active')) return null;
+		if (resultsClass.includes('active')) return;
 		$('.leaflet-container').css('cursor','crosshair');
 	}
 }
